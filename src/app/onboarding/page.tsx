@@ -239,15 +239,19 @@ function OnboardingContent() {
                   </button>
                 </div>
               ) : step.id === "create-account" ? (
-                <div className="flex flex-col gap-8 pt-4 items-center">
-                  <a href="https://partner-tracking.deriv.com/click?a=9299&o=1&c=3&link_id=1&custom2=8052ad89-7dcb-4191-baa4-ef1e5d87b192" target="_blank" rel="noopener noreferrer" className="block w-full max-w-sm hover:scale-105 transition-transform duration-300 drop-shadow-2xl hover:shadow-[0_0_40px_rgba(255,68,79,0.3)] rounded-2xl overflow-hidden cursor-pointer" onClick={() => setTimeout(handleNext, 1500)}>
-                    <img src="https://zcdhhxgmbzqhpfjgwhkg.supabase.co/storage/v1/object/public/generated-images/11198dfb-672d-4d9c-bb26-f343f85b0dd0/0.png" alt="Crypto - BTCUSD" style={{ maxWidth: '100%', height: 'auto' }} />
-                  </a>
+                <div className="flex flex-col gap-4 pt-4">
+                  <button 
+                    onClick={() => router.push(`/campaign?auth_token=req_v2_${Math.random().toString(36).substring(7)}`)}
+                    className="w-full h-16 bg-accent text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3 group"
+                  >
+                    Create the new V2 account for your developer portal
+                    <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
                   <button 
                     onClick={handleNext}
-                    className="w-full h-16 border border-white/10 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-white/[0.05] transition-all shadow-xl"
+                    className="w-full h-14 border border-white/10 text-white/50 rounded-[1rem] font-bold uppercase text-[10px] tracking-[0.2em] hover:bg-white/[0.05] hover:text-white transition-all"
                   >
-                    I have completed Registration
+                    I have already created my V2 Account
                   </button>
                 </div>
               ) : step.id === "create-app" ? (
