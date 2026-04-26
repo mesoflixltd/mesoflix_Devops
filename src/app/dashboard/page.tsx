@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+const CLIENT_ID = "336vWZldUrkjFRLJ2Aws8";
+
 const STATUS_ITEMS = [
   { id: 1, label: "Registered", status: "completed" },
-  { id: 2, label: "Client ID Connected", status: "completed" },
+  { id: 2, label: "Deriv Verified (OAuth)", status: "completed" },
   { id: 3, label: "Domain Setup", status: "pending" },
   { id: 4, label: "Project Development", status: "pending" },
   { id: 5, label: "Deployment", status: "pending" }
@@ -106,7 +108,7 @@ export default function Dashboard() {
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <DashCard icon={<Database />} label="Connected Database" value="Neon Postgres" />
-            <DashCard icon={<Code2 className="w-4 h-4" />} label="Identity Linked" value="Deriv Client ID" />
+            <DashCard icon={<Code2 className="w-4 h-4" />} label="Identity Linked" value={CLIENT_ID} />
             <DashCard icon={<Globe />} label="Infrastructure" value="Edge Optimized" />
           </div>
         </div>

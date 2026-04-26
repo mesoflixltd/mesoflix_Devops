@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ChevronRight, 
   ArrowLeft, 
   ExternalLink, 
   CheckCircle2, 
-  UserPlus, 
+  UserPlus,
   Code2, 
   ClipboardCheck,
   Rocket,
@@ -15,7 +15,10 @@ import {
   AlertCircle
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { generatePKCE, initiateDerivAuth } from "@/lib/deriv-auth";
+
+const CLIENT_ID = "336vWZldUrkjFRLJ2Aws8";
 
 const STEPS = [
   {
@@ -27,54 +30,52 @@ const STEPS = [
     action: "next"
   },
   {
-    id: "create-account",
-    title: "Create Your Account",
-    text: "Open Deriv and register a free account. Follow the verification steps sent to your email.",
-    icon: <UserPlus className="w-8 h-8 text-accent" />,
-    buttonText: "Open Deriv",
-    link: "https://deriv.com",
-    action: "external"
-  },
-  {
-    id: "create-app",
-    title: "Create Developer App",
-    text: "Go to developers.deriv.com and create a new application named 'Mesoflix Integration'.",
-    icon: <Code2 className="w-8 h-8 text-accent" />,
-    buttonText: "Open Developer Portal",
-    link: "https://developers.deriv.com",
-    action: "external"
-  },
-  {
-    id: "copy-id",
-    title: "Copy Your Client ID",
-    text: "After creating your app, copy the Client ID shown in the developer portal dashboard.",
-    icon: <ClipboardCheck className="w-8 h-8 text-accent" />,
-    buttonText: "I Have My Client ID",
-    action: "next"
+    id: "authenticate",
+    title: "Connect Deriv Account",
+    text: "Log in with your Deriv account to securely link your trading identity to Mesoflix Systems.",
+    icon: <ShieldCheck className="w-8 h-8 text-accent" />,
+    buttonText: "Authenticate with Deriv",
+    action: "oauth"
   },
   {
     id: "finish-setup",
     title: "Finish Setup",
-    text: "Paste your Client ID below and fill in your details to complete your project setup.",
-    icon: <ShieldCheck className="w-8 h-8 text-accent" />,
+    text: "Fill in your details to complete your project setup and initialize your dashboard.",
+    icon: <Rocket className="w-8 h-8 text-accent" />,
     buttonText: "Complete Registration",
     action: "form"
   }
 ];
 
-export default function Onboarding() {
-  const [currentStep, setCurrentStep] = useState(0);
+function OnboardingContent() {
+  const searchParams = useSearchParams();
+  const authSuccess = searchParams.get("auth") === "success";
+  
+  const [currentStep, setCurrentStep] = useState(authSuccess ? STEPS.length - 1 : 0);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    clientId: "",
+    clientId: CLIENT_ID,
     domainProvider: "GoDaddy",
     whatsapp: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const handleNext = () => {
+  const handleOAuth = async (prompt: 'login' | 'registration' = 'login') => {
+    const { codeVerifier, codeChallenge, state } = await generatePKCE();
+    const redirectUri = `${window.location.origin}/onboarding/callback`;
+    initiateDerivAuth(CLIENT_ID, redirectUri, codeChallenge, state, codeVerifier, prompt);
+  };
+
+  const handleNext = async () => {
+    const stepAction = STEPS[currentStep].action;
+    
+    if (stepAction === "oauth") {
+      await handleOAuth("registration");
+      return;
+    }
+
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
@@ -159,11 +160,11 @@ export default function Onboarding() {
 
               {/* Text */}
               <div>
-                <h1 className="text-3xl md:text-4xl font-black mb-4 tracking-tight">
+                <h1 className="text-3xl md:text-4xl font-black mb-4 tracking-tight uppercase">
                   {step.title}
                 </h1>
                 <p className="text-foreground/60 text-lg leading-relaxed">
-                  {step.description || (step as any).text}
+                  {(step as any).description || (step as any).text}
                 </p>
               </div>
 
@@ -186,7 +187,7 @@ export default function Onboarding() {
                     />
                   </div>
                   <InputField 
-                    label="Client ID" 
+                    label="Client ID (Linked)" 
                     placeholder="e.g. 335L5AL8kB7eG4uSjZlko" 
                     value={formData.clientId} 
                     onChange={(e) => setFormData({...formData, clientId: e.target.value})} 
@@ -227,21 +228,27 @@ export default function Onboarding() {
                 </form>
               ) : (
                 <div className="flex flex-col gap-4 pt-4">
-                  {step.action === "external" ? (
-                    <a 
-                      href={step.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      onClick={handleNext}
-                      className="w-full h-16 bg-white text-black rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 group"
-                    >
-                      {step.buttonText}
-                      <ExternalLink className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                    </a>
+                  {step.action === "oauth" ? (
+                    <>
+                      <button 
+                        onClick={() => handleOAuth("registration")}
+                        className="w-full h-16 bg-accent text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3 group"
+                      >
+                        Create Deriv Account
+                        <UserPlus className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                      <button 
+                        onClick={() => handleOAuth("login")}
+                        className="w-full h-16 border border-white/10 bg-white/[0.02] text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-white/[0.05] transition-all flex items-center justify-center gap-3"
+                      >
+                        Login via Deriv
+                        <ShieldCheck className="w-4 h-4 text-foreground/40" />
+                      </button>
+                    </>
                   ) : (
                     <button 
                       onClick={handleNext}
-                      className="w-full h-16 bg-accent text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-accent/20"
+                      className="w-full h-16 bg-accent text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3"
                     >
                       {step.buttonText}
                     </button>
@@ -256,7 +263,7 @@ export default function Onboarding() {
                     </button>
                   ) || (
                     <p className="text-[10px] font-bold text-center text-foreground/30 uppercase tracking-[0.2em] mt-4">
-                      Trusted by 5,000+ Algorithmic Traders
+                      Institutional Identity Integration
                     </p>
                   )}
                 </div>
@@ -270,11 +277,23 @@ export default function Onboarding() {
       <footer className="p-8 border-t border-white/[0.05] bg-white/[0.01]">
         <div className="max-w-4xl mx-auto flex flex-col items-center text-center gap-4">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/20">
-            Powered by Mesoflix Systems Group | Multi-Tier Security
+            Powered by Mesoflix Systems Group | OAuth 2.0 PKCE Verified
           </p>
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function Onboarding() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+        <Rocket className="w-8 h-8 text-accent animate-pulse" />
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 }
 
