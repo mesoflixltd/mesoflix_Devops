@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, AlertCircle } from "lucide-react";
 
-export default function DerivCallback() {
+function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -21,14 +21,12 @@ export default function DerivCallback() {
         return;
       }
 
-      // 1. Verify state
       const storedState = sessionStorage.getItem("oauth_state");
       if (state !== storedState) {
         setError("Invalid state (CSRF Protection). Please try again.");
         return;
       }
 
-      // 2. Exchange code for token
       const codeVerifier = sessionStorage.getItem("pkce_code_verifier");
       if (!code || !codeVerifier) {
         setError("Missing authentication code or verifier.");
@@ -49,9 +47,7 @@ export default function DerivCallback() {
         const data = await res.json();
 
         if (res.ok) {
-          // Store token and redirect back to onboarding form (last step)
           localStorage.setItem("deriv_access_token", data.access_token);
-          // Redirect to onboarding with a flag that auth is complete
           router.push("/onboarding?auth=success");
         } else {
           setError(data.error || "Token exchange failed");
@@ -95,5 +91,15 @@ export default function DerivCallback() {
         )}
       </motion.div>
     </div>
+  );
+}
+
+export default function DerivCallback() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#020617] flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-accent animate-spin" />
+    </div>}>
+      <CallbackContent />
+    </Suspense>
   );
 }
