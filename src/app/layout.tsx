@@ -8,8 +8,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Mesoflix DevOps | Building, Automating, and Managing Your Trading & Web Systems",
-  description: "Custom trading bots, web platforms, and full client infrastructure—built for performance and scalability.",
+  title: "Mesoflix Systems | Enterprise Deriv Site Ecosystems",
+  description: "Architectural excellence in trading bot automation and brokerage web infrastructure for the Deriv ecosystem.",
+  icons: {
+    icon: "/favicon.png",
+  }
 };
 
 export default function RootLayout({

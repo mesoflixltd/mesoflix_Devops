@@ -45,7 +45,7 @@ export default function Home() {
     initial: { opacity: 0, y: 15 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true },
-    transition: { duration: 0.8, ease: "easeOut" }
+    transition: { duration: 0.8 }
   };
 
   return (
@@ -66,7 +66,7 @@ export default function Home() {
             <a href="#expertise" className="hover:text-accent transition-colors">Expertise</a>
             <a href="#ecosystem" className="hover:text-accent transition-colors">Ecosystem</a>
             <a href="#security" className="hover:text-accent transition-colors">Security</a>
-            <Link href="/register" className="h-10 flex items-center px-6 rounded bg-white text-black hover:bg-zinc-200 transition-all font-black">
+            <Link href="/onboarding" className="h-10 flex items-center px-6 rounded bg-white text-black hover:bg-zinc-200 transition-all font-black">
               Client Portal
             </Link>
           </div>
@@ -124,7 +124,7 @@ export default function Home() {
             transition={{ delay: 0.2 }}
             className="flex flex-col sm:flex-row items-center gap-6"
           >
-            <Link href="/register" className="h-14 flex items-center px-10 rounded bg-accent text-white font-black hover:scale-[1.02] transition-all shadow-xl shadow-accent/20 gap-3 group">
+            <Link href="/onboarding" className="h-14 flex items-center px-10 rounded bg-accent text-white font-black hover:scale-[1.02] transition-all shadow-xl shadow-accent/20 gap-3 group">
               Start Your Project
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -272,7 +272,7 @@ export default function Home() {
         <div className="max-w-5xl mx-auto p-16 md:p-24 bg-accent relative overflow-hidden flex flex-col items-center text-center rounded-[2rem]">
           <div className="absolute top-0 right-0 w-[50%] h-[100%] bg-white/10 -skew-x-[30deg] translate-x-[20%]" />
           <h2 className="text-4xl md:text-6xl font-black text-white mb-10 relative z-10 leading-tight">Ready to Automate <br />Your Deriv Strategy?</h2>
-          <Link href="/register" className="h-16 inline-flex items-center px-12 rounded-full bg-white text-black font-black hover:scale-105 transition-all text-sm uppercase tracking-widest relative z-10 shadow-2xl">
+          <Link href="/onboarding" className="h-16 inline-flex items-center px-12 rounded-full bg-white text-black font-black hover:scale-105 transition-all text-sm uppercase tracking-widest relative z-10 shadow-2xl">
             Start Your Project Now
           </Link>
         </div>
