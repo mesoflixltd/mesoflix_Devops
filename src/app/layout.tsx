@@ -10,11 +10,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Mesoflix Systems | Enterprise Deriv Site Ecosystems",
   description: "Architectural excellence in trading bot automation and brokerage web infrastructure for the Deriv ecosystem and professional traders.",
-  metadataBase: new URL("https://mesoflix.systems"), // Replace with actual production URL
+  metadataBase: new URL("https://tradermind.site"),
   openGraph: {
     title: "Mesoflix Systems | Enterprise Deriv Site Ecosystems",
     description: "Architectural excellence in trading bot automation and brokerage web infrastructure.",
-    url: "https://mesoflix.systems",
+    url: "https://tradermind.site",
     siteName: "Mesoflix Systems",
     images: [
       {
@@ -34,7 +34,11 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
   },
   icons: {
-    icon: "/favicon.png",
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   }
 };
 
