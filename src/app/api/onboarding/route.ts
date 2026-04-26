@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, clientId, domainProvider, whatsapp } = body;
+    const { name, email, clientId, domainName, domainProvider, apiConfig, whatsapp } = body;
 
-    if (!name || !email || !clientId || !domainProvider || !whatsapp) {
+    if (!name || !email || !clientId || !domainName || !domainProvider || !apiConfig || !whatsapp) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -17,7 +17,9 @@ export async function POST(req: Request) {
       name,
       email,
       clientId,
+      domainName,
       domainProvider,
+      apiConfig,
       whatsapp,
     }).returning();
 
