@@ -148,13 +148,13 @@ export default function Home() {
       <section className="relative min-h-screen flex items-center pt-32 overflow-hidden bg-black">
         {/* Background Slider - Gapless implementation */}
         <div className="absolute inset-0 z-0">
-          <AnimatePresence initial={false}>
+          <AnimatePresence mode="popLayout">
             <motion.div
               key={currentImage}
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ duration: 1.2, ease: [0.6, 0.05, -0.01, 0.9] }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
               className="absolute inset-0 w-full h-full"
             >
               <img src={HERO_IMAGES[currentImage]} alt="Infrastructure" className="w-full h-full object-cover grayscale-[20%] transition-transform duration-[6s] scale-105" />
@@ -165,7 +165,7 @@ export default function Home() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 w-full py-20">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease: "easeOut" }} className="max-w-4xl">
-            <h1 className="text-6xl md:text-9xl font-black mb-10 leading-[0.85] tracking-tighter uppercase italic drop-shadow-2xl">
+            <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-black mb-10 leading-[0.85] tracking-tighter uppercase italic drop-shadow-2xl">
               Institutional <br />
               <span className="text-accent">Deriv Site</span> <br />
               Ecosystems
@@ -213,7 +213,7 @@ export default function Home() {
       {/* Expertise Section */}
       <section id="expertise" className="py-32 px-6 bg-[#020617] relative overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-5xl md:text-7xl font-black tracking-tight uppercase leading-[0.9] mb-24">
+          <h2 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight uppercase leading-[0.9] mb-24">
             Institutional <br /><span className="text-foreground/40 italic">Engineering</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -255,10 +255,10 @@ export default function Home() {
           <div className="lg:col-span-2 space-y-6">
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Legal & Trust</h4>
             <ul className="space-y-4 text-[10px] font-black uppercase tracking-widest text-foreground/50">
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Security Ethics</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
+              <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/security-policy" className="hover:text-white transition-colors">Security Ethics</Link></li>
+              <li><Link href="/cookies" className="hover:text-white transition-colors">Cookie Policy</Link></li>
             </ul>
           </div>
 

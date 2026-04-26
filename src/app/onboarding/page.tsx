@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const AFFILIATE_LINK = "https://track.deriv.com/_4PYVLDWB6GK5/1/";
+const AFFILIATE_LINK = "/api/redirect/deriv";
 
 const STEPS = [
   {
