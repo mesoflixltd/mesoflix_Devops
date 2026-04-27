@@ -2,14 +2,22 @@ import { db } from "@/db";
 import { admins, leads, projects } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import AdminUI from "./AdminUI";
 import { ShieldAlert } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
+  const awaitedParams = await searchParams;
+  const token = awaitedParams?.token;
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("mesoflix_admin_session")?.value;
+
+  // Intercept magic link tokens and route through the Authority Verifier
+  if (token && token !== sessionToken) {
+    redirect(`/api/auth/admin/verify?token=${token}`);
+  }
 
   if (!sessionToken) {
     return <AdminLoginGate />;
