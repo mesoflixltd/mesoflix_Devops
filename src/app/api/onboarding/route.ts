@@ -40,8 +40,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, lead: newLead });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Onboarding Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

@@ -81,6 +81,7 @@ function OnboardingContent() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const router = useRouter();
 
   // Load from local storage on mount
@@ -158,8 +159,7 @@ function OnboardingContent() {
         setSubmitSuccess(true);
       } else {
         const errorData = await res.json().catch(() => null);
-        console.error("API Rejected:", errorData);
-        alert("The server lacked the proper environment variables or rejected the request. Check your terminal logs.");
+        setApiError(errorData?.error || "A user with the same email or profile already exists.");
       }
     } catch (err) {
       console.error("Network crash:", err);
@@ -214,6 +214,16 @@ function OnboardingContent() {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-6 pt-32 pb-20">
         <div className="max-w-xl w-full">
+          {apiError && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 mb-8 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center justify-center gap-3 text-red-500 font-black text-xs uppercase tracking-[0.1em] shadow-[0_0_20px_rgba(255,0,0,0.15)] text-center"
+            >
+              {apiError}
+            </motion.div>
+          )}
+
           {/* Progress Bar */}
           <div className="h-1 w-full bg-white/[0.05] rounded-full mb-12 overflow-hidden">
             <motion.div 

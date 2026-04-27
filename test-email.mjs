@@ -3,7 +3,7 @@
 async function testEmail() {
   const BREVO_API_KEY = "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";
   const SENDER_EMAIL = "admin@tradermind.site";
-  const TEST_RECIPIENT = "admin@tradermind.site"; // Send it to themselves
+  const TEST_RECIPIENT = "lemicmelic@gmail.com"; // User's requested diagnostic destination
 
   console.log("Attempting to send email via Brevo API...");
 
