@@ -48,3 +48,14 @@ export const admins = pgTable("admins", {
   magicKey: uuid("magic_key").defaultRandom().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Master Notification Engine
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: uuid("lead_id").references(() => leads.id), // Null = Broadcast to all
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull().default("web"), // web, email, both
+  isRead: text("is_read").default("false").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

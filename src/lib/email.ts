@@ -179,3 +179,59 @@ export async function sendAdminWelcomeEmail({
 
   return response.json();
 }
+
+export async function sendSystemNotificationEmail({ 
+  email, 
+  title, 
+  message 
+}: { 
+  email: string; 
+  title: string; 
+  message: string; 
+}) {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || "admin@tradermind.site";
+
+  if (!BREVO_API_KEY) return;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <style>
+        body { background-color: #020617; color: #ffffff; font-family: sans-serif; }
+        .container { max-width: 600px; margin: 40px auto; padding: 40px; border: 1px solid #1e293b; background-color: #020617; border-radius: 24px; }
+        .logo { font-size: 18px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #ef4444; margin-bottom: 30px; }
+        .title { font-size: 24px; font-weight: 900; margin: 20px 0; color: #ffffff; text-transform: uppercase; letter-spacing: -1px; }
+        .content { color: #94a3b8; font-size: 16px; line-height: 1.6; margin-bottom: 40px; border-left: 3px solid #ef4444; padding-left: 20px; }
+        .btn { display: inline-block; background-color: #ef4444; color: #ffffff; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 900; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        .footer { margin-top: 60px; font-size: 11px; color: #475569; border-top: 1px solid #1e293b; padding-top: 20px; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="logo">DevOps Hub</div>
+        <h1 class="title">${title}</h1>
+        <div class="content">${message}</div>
+        <a href="https://tradermind.site/dashboard" class="btn">View Dashboard</a>
+        <div class="footer">Institutional Alert System | Node Authority</div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "api-key": BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: { name: "Mesoflix Authority", email: SENDER_EMAIL },
+      to: [{ email }],
+      subject: `[ALERT] ${title}`,
+      htmlContent: htmlContent,
+    }),
+  });
+}
