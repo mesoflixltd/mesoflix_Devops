@@ -7,10 +7,24 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#020617",
+};
+
 export const metadata: Metadata = {
   title: "Mesoflix Systems | Enterprise Deriv Site Ecosystems",
   description: "Architectural excellence in trading bot automation and brokerage web infrastructure for the Deriv ecosystem and professional traders.",
   metadataBase: new URL("https://tradermind.site"),
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Mesoflix DevOps",
+  },
   openGraph: {
     title: "Mesoflix Systems | Enterprise Deriv Site Ecosystems",
     description: "Architectural excellence in trading bot automation and brokerage web infrastructure.",

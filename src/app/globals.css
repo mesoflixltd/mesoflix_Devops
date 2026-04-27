@@ -16,6 +16,12 @@
   --font-sans: var(--font-inter);
 }
 
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
@@ -25,9 +31,13 @@ body {
 
 .glass {
   background: var(--card-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
+}
+
+.pwa-prompt-gradient {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(2, 6, 23, 0.95) 100%);
 }
 
 .glow {
@@ -37,6 +47,7 @@ body {
 .text-gradient {
   background: linear-gradient(to right, #60A5FA, #A78BFA);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

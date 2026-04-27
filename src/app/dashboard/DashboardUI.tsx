@@ -60,12 +60,12 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col font-inter selection:bg-red-500/30">
+    <div className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[#020617] text-slate-200 flex flex-col font-inter selection:bg-red-500/30">
       
       {/* 🔝 FIXED TOP NAVBAR */}
       <TopBar lead={lead} setIsMobileOpen={setIsMobileOpen} isMobileOpen={isMobileOpen} isScrolled={isScrolled} />
 
-      <div className="flex flex-1 pt-16">
+      <div className="flex flex-1 pt-16 max-w-full overflow-x-hidden">
         {/* 📂 FIXED SIDEBAR (Desktop) */}
         <aside className="fixed left-0 top-16 bottom-0 w-64 border-r border-white/5 bg-[#020617] hidden lg:flex flex-col z-40 overflow-y-auto scrollbar-hide">
           <SidebarNav activeTab={activeTab} switchTab={switchTab} />
@@ -109,7 +109,7 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
         </AnimatePresence>
 
         {/* 🧩 MAIN CONTENT AREA */}
-        <main className="flex-1 lg:ml-64 relative min-h-screen">
+        <main className="flex-1 lg:ml-64 relative min-h-screen max-w-full overflow-x-hidden">
           {/* Subtle Global Glow Effect (Red) */}
           <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-96 bg-red-600/5 blur-[150px] pointer-events-none rounded-full" />
           
@@ -120,7 +120,7 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 1.01 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="p-5 md:p-8 lg:p-12 pb-24 max-w-7xl mx-auto w-full"
+              className="p-4 md:p-8 lg:p-12 pb-24 max-w-full lg:max-w-7xl mx-auto w-full box-border"
             >
               {activeTab === "overview" && <ViewOverview lead={lead} project={project} progressPercentage={progressPercentage} steps={PROGRESS_STEPS} switchTab={switchTab} />}
               {activeTab === "status" && <ViewStatus project={project} steps={PROGRESS_STEPS} />}
@@ -130,9 +130,57 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
               {activeTab === "vault" && <ViewVault lead={lead} />}
             </motion.div>
           </AnimatePresence>
+
+          {/* 📱 PWA INSTALL PROMPT (Mobile) */}
+          <MobileInstallPrompt />
         </main>
       </div>
     </div>
+  );
+}
+
+function MobileInstallPrompt() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    // Only show on mobile and if not dismissed
+    const isMobile = window.innerWidth < 1024;
+    const isDismissed = localStorage.getItem("pwa_dismissed");
+    if (isMobile && !isDismissed) {
+      const timer = setTimeout(() => setShow(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <motion.div 
+      initial={{ y: 100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="fixed bottom-6 left-4 right-4 z-[100] lg:hidden"
+    >
+      <div className="pwa-prompt-gradient border border-red-500/20 backdrop-blur-2xl rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-5 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-2">
+           <button onClick={() => { setShow(false); localStorage.setItem("pwa_dismissed", "true"); }} className="p-1 hover:bg-white/5 rounded-full text-white/30">
+              <X className="w-4 h-4" />
+           </button>
+        </div>
+        <div className="w-14 h-14 rounded-2xl bg-red-600 flex items-center justify-center shrink-0 shadow-lg shadow-red-900/40">
+           <Zap className="w-7 h-7 text-white" />
+        </div>
+        <div className="flex-1 pr-6">
+           <h4 className="text-sm font-black uppercase text-white italic tracking-tight">Upgrade to Desktop Mode</h4>
+           <p className="text-[10px] font-bold text-white/40 leading-snug mt-1">Install to homescreen for a permanent, high-performance node session.</p>
+        </div>
+        <button 
+           onClick={() => { setShow(false); /* Trigger install if supported or just show instructions */ }}
+           className="bg-white text-[#020617] px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest italic flex items-center gap-2 shadow-xl whitespace-nowrap"
+        >
+          Install <ArrowRight className="w-3 h-3" />
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
