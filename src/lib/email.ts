@@ -14,8 +14,8 @@ export async function sendWelcomeEmail({
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tradermind.site";
 
   if (!BREVO_API_KEY) {
-    console.warn("No Brevo API key found. Email sending skipped.");
-    return;
+    console.error("FATAL: No Brevo API key found inside Next.js process! THE SERVER MUST BE RESTARTED.");
+    throw new Error("Missing Brevo API Key Environment Variable.");
   }
 
   const magicLink = `${SITE_URL}/dashboard?auth_token=${magicKey}`;

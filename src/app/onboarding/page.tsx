@@ -80,6 +80,7 @@ function OnboardingContent() {
     acceptedTerms: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const router = useRouter();
 
   // Load from local storage on mount
@@ -154,10 +155,14 @@ function OnboardingContent() {
       });
       
       if (res.ok) {
-        router.push("/dashboard");
+        setSubmitSuccess(true);
+      } else {
+        const errorData = await res.json().catch(() => null);
+        console.error("API Rejected:", errorData);
+        alert("The server lacked the proper environment variables or rejected the request. Check your terminal logs.");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Network crash:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -165,6 +170,28 @@ function OnboardingContent() {
 
   const step = STEPS[currentStep];
   const progress = ((currentStep + 1) / STEPS.length) * 100;
+
+  if (submitSuccess) {
+    return (
+      <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center justify-center font-inter p-6 space-y-6">
+        <div className="w-16 h-16 rounded-[1.5rem] bg-accent/10 border border-accent/20 flex items-center justify-center shadow-[0_0_60px_rgba(255,68,79,0.4)]">
+          <CheckCircle2 className="w-8 h-8 text-accent animate-pulse" />
+        </div>
+        <div className="text-center space-y-4 max-w-lg">
+          <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter italic">Infrastructure Initialized</h1>
+          <p className="text-foreground/60 text-sm sm:text-base font-bold leading-relaxed pt-2">
+            The database profile for <span className="text-accent">{formData.domainName || "your domain"}</span> has been fully locked in.
+            <br/><br/>
+            Because we utilize a Zero-Trust architecture, we have dispatched a highly-secure <span className="text-accent uppercase tracking-widest">Puzzle Key Token</span> directly to your email. 
+          </p>
+          <div className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-xl flex items-center justify-center gap-3 mt-6">
+            <Globe className="w-4 h-4 text-foreground/40" />
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-foreground/40 text-left">Check Spam/Junk if missing</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col font-inter selection:bg-accent/30 text-xs sm:text-sm">
