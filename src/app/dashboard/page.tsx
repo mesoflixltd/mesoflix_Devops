@@ -15,7 +15,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const sessionToken = cookieStore.get("mesoflix_session")?.value;
 
   // 1. Intercept URL parameter attempts and reroute them through the Auth API strictly
-  if (token) {
+  // Loop-breaker: Only redirect if the URL token is different from the current session token
+  if (token && token !== sessionToken) {
     redirect(`/api/auth/verify?token=${token}`);
   }
 
