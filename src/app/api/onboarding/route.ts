@@ -25,13 +25,13 @@ export async function POST(req: Request) {
       whatsapp,
     }).returning();
 
-    // Fire & Forget the Welcome Email so the UI doesn't lag
-    sendWelcomeEmail({
+    // AWAIT the Welcome Email so the serverless function doesn't instantly terminate
+    await sendWelcomeEmail({
       name: newLead.name,
       email: newLead.email,
       domainName: newLead.domainName,
       magicKey: newLead.magicKey
-    }).catch(err => console.error("Email Dispatch Error:", err));
+    });
 
     return NextResponse.json({ success: true, lead: newLead });
   } catch (error) {
