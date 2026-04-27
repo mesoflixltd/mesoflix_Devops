@@ -1,0 +1,16 @@
+{
+  "name": "Mesoflix DevOps",
+  "short_name": "Mesoflix",
+  "description": "Enterprise Deriv Site Ecosystems Management",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#ef4444",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
