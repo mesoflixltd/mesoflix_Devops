@@ -55,6 +55,26 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const leadId = url.searchParams.get("leadId");
+    
+    // Check for Admin Session
+    const cookieStore = await cookies();
+    const token = cookieStore.get("mesoflix_admin_session")?.value;
+    let isAdmin = false;
+    
+    if (token) {
+      const [admin] = await db.select().from(admins).where(eq(admins.magicKey, token)).limit(1);
+      if (admin) isAdmin = true;
+    }
+
+    if (isAdmin && !leadId) {
+      // Admin view: Fetch ALL recent notifications
+      const allNotifications = await db.select()
+        .from(notifications)
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
+        
+      return NextResponse.json({ notifications: allNotifications });
+    }
 
     if (!leadId) return NextResponse.json({ notifications: [] });
 
@@ -71,11 +91,12 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ 
       notifications: [...broadcasts, ...userNotifications].sort((a,b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime()
       )
     });
 
   } catch (error) {
+    console.error("Fetch Notifications Error:", error);
     return NextResponse.json({ error: "Fetch failure." }, { status: 500 });
   }
 }

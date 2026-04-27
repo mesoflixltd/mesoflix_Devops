@@ -7,11 +7,11 @@ import {
   Database, Globe, Menu, X, Zap, Activity, Loader2, CheckCircle2,
   Mail, MessageSquare, Megaphone, GitBranch, Terminal, Key, 
   ExternalLink, Code2, Star, Clock, AlertCircle, User, Info, Smartphone,
-  FileCode, Upload, Trash2, Edit3, Save, ChevronLeft, Download, Folder
+  FileCode, Upload, Trash2, Edit3, Save, ChevronLeft, Download, Folder, Send
 } from "lucide-react";
 
 type View = "leads" | "notifications" | "github" | "logs";
-type SidebarTab = "lifecycles" | "portfolio" | "logs";
+type SidebarTab = "lifecycles" | "portfolio" | "logs" | "transmit";
 
 export default function AdminUI({ admin, leads: initialLeads, projects: initialProjects }: { admin: any, leads: any[], projects: any[] }) {
   const [activeView, setActiveView] = useState<View>("leads");
@@ -41,6 +41,12 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
   // Broadcast State
   const [broadcast, setBroadcast] = useState({ title: "", message: "", type: "web" });
   const [dispatching, setDispatching] = useState(false);
+  const [notificationTarget, setNotificationTarget] = useState<"broadcast" | "individual">("broadcast");
+  const [targetUser, setTargetUser] = useState<any>(null);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+  const [fetchingRecent, setFetchingRecent] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   // Derive active project for selected lead
   const activeProject = selectedLead ? projects.find(p => p.leadId === selectedLead.id) : null;
@@ -49,6 +55,12 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
   useEffect(() => {
     if (isTokenSaved) handleFetchRepos();
   }, [isTokenSaved]);
+
+  useEffect(() => {
+    if (activeView === 'notifications') {
+      handleFetchRecentNotifications();
+    }
+  }, [activeView]);
 
   const filteredLeads = initialLeads.filter(l => 
     l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -162,19 +174,40 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
     } catch (err) { console.error(err); } finally { setSaving(false); }
   };
 
+  const handleFetchRecentNotifications = async () => {
+    setFetchingRecent(true);
+    try {
+      const res = await fetch("/api/admin/notifications");
+      const data = await res.json();
+      if (data.notifications) setRecentNotifications(data.notifications);
+    } catch (err) { console.error(err); } finally { setFetchingRecent(false); }
+  };
+
   const handleDispatchNotification = async () => {
+    if (notificationTarget === "individual" && !targetUser) {
+      alert("Select a target user first.");
+      return;
+    }
     setDispatching(true);
     try {
-      await fetch("/api/admin/notifications", {
+      const res = await fetch("/api/admin/notifications", {
         method: "POST",
         body: JSON.stringify({
-          leadId: selectedLead?.id || null, 
+          leadId: notificationTarget === "individual" ? targetUser.id : null, 
           ...broadcast
         })
       });
-      setBroadcast({ title: "", message: "", type: "web" });
-      if (selectedLead) setSelectedLead(null);
-    } catch (err) { console.error(err); } finally { setDispatching(false); }
+      if (res.ok) {
+        setBroadcast({ title: "", message: "", type: "web" });
+        setTargetUser(null);
+        setUserSearchTerm("");
+        handleFetchRecentNotifications();
+        alert("Alert dispatched successfully.");
+      }
+    } catch (err) { 
+      console.error(err); 
+      alert("Failed to dispatch alert.");
+    } finally { setDispatching(false); }
   };
 
   return (
@@ -288,21 +321,99 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
              )}
 
              {activeView === 'notifications' && (
-               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} key="notifications" className="max-w-4xl mx-auto space-y-10">
-                  <header><h2 className="text-4xl font-black uppercase tracking-tighter italic text-white leading-none">Broadcast HQ</h2></header>
-                  <div className="bg-[#020617] border border-white/10 rounded-[2.5rem] p-10 space-y-8 shadow-2xl relative overflow-hidden group">
-                     <div className="space-y-4 relative">
-                        <div className="grid grid-cols-3 gap-4">
-                           <button onClick={() => setBroadcast({...broadcast, type: 'web'})} className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${broadcast.type === 'web' ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/10 text-white/30'}`}><Globe className="w-4 h-4" /> Web Shell</button>
-                           <button onClick={() => setBroadcast({...broadcast, type: 'email'})} className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${broadcast.type === 'email' ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/10 text-white/30'}`}><Mail className="w-4 h-4" /> SMTP Alert</button>
-                           <button onClick={() => setBroadcast({...broadcast, type: 'both'})} className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${broadcast.type === 'both' ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/10 text-white/30'}`}><Megaphone className="w-4 h-4" /> Global Pulse</button>
-                        </div>
-                        <div className="space-y-4 pt-4">
-                           <input type="text" placeholder="Title..." className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none" value={broadcast.title} onChange={(e) => setBroadcast({...broadcast, title: e.target.value})} />
-                           <textarea placeholder="Message..." className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-6 px-6 text-sm font-bold text-white min-h-[200px] resize-none" value={broadcast.message} onChange={(e) => setBroadcast({...broadcast, message: e.target.value})} />
-                           <button onClick={handleDispatchNotification} disabled={dispatching || !broadcast.title || !broadcast.message} className="w-full py-5 bg-red-600 hover:bg-red-500 rounded-2xl text-xs font-black uppercase tracking-widest text-white italic disabled:opacity-50">Dispatch Alert</button>
-                        </div>
-                     </div>
+               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} key="notifications" className="space-y-10">
+                  <header className="flex items-center justify-between">
+                    <h2 className="text-4xl font-black uppercase tracking-tighter italic text-white leading-none">Broadcast HQ</h2>
+                    <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                       <button onClick={() => {setNotificationTarget('broadcast'); setTargetUser(null);}} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationTarget === 'broadcast' ? 'bg-red-600 text-white' : 'text-white/30'}`}>Global</button>
+                       <button onClick={() => setNotificationTarget('individual')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${notificationTarget === 'individual' ? 'bg-red-600 text-white' : 'text-white/30'}`}>Individual</button>
+                    </div>
+                  </header>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                    <div className="lg:col-span-2 space-y-6">
+                      <div className="bg-[#020617] border border-white/10 rounded-[2.5rem] p-10 space-y-8 shadow-2xl relative overflow-hidden">
+                         <div className="space-y-4 relative">
+                            {notificationTarget === 'individual' && (
+                              <div className="space-y-3 relative">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-white/20 italic pl-2">Target Node Selection</label>
+                                <div className="relative">
+                                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                  <input 
+                                    type="text" 
+                                    placeholder="Search user by name or email..." 
+                                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-sm font-bold text-white focus:border-red-500/40"
+                                    value={targetUser ? targetUser.name : userSearchTerm}
+                                    onChange={(e) => {
+                                      setUserSearchTerm(e.target.value);
+                                      if (targetUser) setTargetUser(null);
+                                      setShowUserDropdown(true);
+                                    }}
+                                    onFocus={() => setShowUserDropdown(true)}
+                                  />
+                                  <AnimatePresence>
+                                    {showUserDropdown && userSearchTerm && !targetUser && (
+                                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute top-full left-0 right-0 mt-2 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl z-50 max-h-64 overflow-y-auto">
+                                        {initialLeads.filter(l => l.name.toLowerCase().includes(userSearchTerm.toLowerCase()) || l.email.toLowerCase().includes(userSearchTerm.toLowerCase())).map(u => (
+                                          <button key={u.id} onClick={() => {setTargetUser(u); setUserSearchTerm(u.name); setShowUserDropdown(false);}} className="w-full p-4 flex items-center justify-between hover:bg-white/5 text-left border-b border-white/5 last:border-0">
+                                            <div>
+                                              <p className="text-xs font-black text-white italic">{u.name}</p>
+                                              <p className="text-[10px] text-white/20 font-bold uppercase">{u.email}</p>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-white/20" />
+                                          </button>
+                                        ))}
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-3 gap-4">
+                               <button onClick={() => setBroadcast({...broadcast, type: 'web'})} className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${broadcast.type === 'web' ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/10 text-white/30'}`}><Globe className="w-4 h-4" /> Web Shell</button>
+                               <button onClick={() => setBroadcast({...broadcast, type: 'email'})} className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${broadcast.type === 'email' ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/10 text-white/30'}`}><Mail className="w-4 h-4" /> SMTP Alert</button>
+                               <button onClick={() => setBroadcast({...broadcast, type: 'both'})} className={`py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${broadcast.type === 'both' ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/10 text-white/30'}`}><Megaphone className="w-4 h-4" /> Global Pulse</button>
+                            </div>
+                            <div className="space-y-4 pt-4">
+                               <input type="text" placeholder="Title..." className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 px-6 text-sm font-bold text-white focus:outline-none focus:border-red-500/30" value={broadcast.title} onChange={(e) => setBroadcast({...broadcast, title: e.target.value})} />
+                               <textarea placeholder="Message..." className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-6 px-6 text-sm font-bold text-white min-h-[200px] resize-none focus:outline-none focus:border-red-500/30" value={broadcast.message} onChange={(e) => setBroadcast({...broadcast, message: e.target.value})} />
+                               <button onClick={handleDispatchNotification} disabled={dispatching || !broadcast.title || !broadcast.message || (notificationTarget === 'individual' && !targetUser)} className="w-full py-5 bg-red-600 hover:bg-red-500 rounded-2xl text-xs font-black uppercase tracking-widest text-white italic disabled:opacity-50 transition-all shadow-xl shadow-red-900/20 active:scale-95">
+                                 {dispatching ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Dispatch Authority Alert"}
+                               </button>
+                            </div>
+                         </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic pl-4">Registry Pulse</h3>
+                      <div className="bg-[#020617] border border-white/10 rounded-[2.5rem] p-6 space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar shadow-xl">
+                        {fetchingRecent ? (
+                          <div className="py-20 flex flex-col items-center justify-center gap-4 text-white/10"><Loader2 className="w-6 h-6 animate-spin" /><p className="text-[9px] font-black uppercase tracking-widest">Syncing History...</p></div>
+                        ) : recentNotifications.length > 0 ? (
+                          recentNotifications.map(n => (
+                            <div key={n.id} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${n.type === 'email' ? 'bg-blue-500/10 text-blue-500' : n.type === 'web' ? 'bg-purple-500/10 text-purple-500' : 'bg-red-500/10 text-red-500'}`}>{n.type}</span>
+                                <span className="text-[8px] font-bold text-white/10">{new Date(n.createdAt).toLocaleDateString()}</span>
+                              </div>
+                              <h4 className="text-xs font-black text-white italic truncate">{n.title}</h4>
+                              <p className="text-[10px] text-white/30 line-clamp-2 leading-relaxed italic">{n.message}</p>
+                              <div className="pt-2 border-t border-white/5 flex items-center gap-2">
+                                <div className="w-1 h-1 rounded-full bg-red-500" />
+                                <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">{n.leadId ? 'Node-Specific' : 'Global Broadcast'}</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-20 text-center space-y-4">
+                            <Megaphone className="w-8 h-8 text-white/5 mx-auto" />
+                            <p className="text-[9px] font-black uppercase tracking-widest text-white/10">No recent dispatches</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                </motion.div>
              )}
@@ -503,6 +614,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                     <div className="flex gap-2 p-1.5 bg-white/[0.03] border border-white/5 rounded-2xl">
                        <button onClick={() => setActiveSidebarTab("lifecycles")} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all ${activeSidebarTab === 'lifecycles' ? 'bg-red-600 text-white' : 'text-white/30 hover:bg-white/5'}`}><Zap className="w-3.5 h-3.5" /> Lifecycles</button>
                        <button onClick={() => setActiveSidebarTab("portfolio")} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all ${activeSidebarTab === 'portfolio' ? 'bg-red-600 text-white' : 'text-white/30 hover:bg-white/5'}`}><User className="w-3.5 h-3.5" /> Profile</button>
+                       <button onClick={() => setActiveSidebarTab("transmit")} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all ${activeSidebarTab === 'transmit' ? 'bg-red-600 text-white' : 'text-white/30 hover:bg-white/5'}`}><Send className="w-3.5 h-3.5" /> Transmit</button>
                        <button onClick={() => setActiveSidebarTab("logs")} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all ${activeSidebarTab === 'logs' ? 'bg-red-600 text-white' : 'text-white/30 hover:bg-white/5'}`}><Terminal className="w-3.5 h-3.5" /> Event</button>
                     </div>
                     {activeSidebarTab === "lifecycles" ? (
@@ -528,6 +640,34 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                             <PortfolioField icon={<Activity className="w-3" />} label="Service Tier" value={selectedLead.projectType} />
                             <PortfolioField icon={<Globe className="w-3" />} label="Base Domain" value={selectedLead.domainName} />
                             <PortfolioField icon={<Database className="w-3" />} label="DNS Registrar" value={selectedLead.domainProvider} />
+                         </div>
+                      </section>
+                    ) : activeSidebarTab === "transmit" ? (
+                      <section className="space-y-8">
+                         <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-red-500 italic pb-2 border-b border-red-500/20">Direct Node Transmission</h3>
+                         <div className="space-y-4">
+                            <div className="flex gap-2 p-1 bg-white/[0.03] border border-white/5 rounded-xl">
+                               <button onClick={() => setBroadcast({...broadcast, type: 'web'})} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase transition-all ${broadcast.type === 'web' ? 'bg-white/10 text-white' : 'text-white/20'}`}>Web</button>
+                               <button onClick={() => setBroadcast({...broadcast, type: 'email'})} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase transition-all ${broadcast.type === 'email' ? 'bg-white/10 text-white' : 'text-white/20'}`}>Email</button>
+                               <button onClick={() => setBroadcast({...broadcast, type: 'both'})} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase transition-all ${broadcast.type === 'both' ? 'bg-white/10 text-white' : 'text-white/20'}`}>Both</button>
+                            </div>
+                            <input type="text" placeholder="Subject..." className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-3 px-4 text-xs font-bold text-white focus:border-red-500/40" value={broadcast.title} onChange={(e) => setBroadcast({...broadcast, title: e.target.value})} />
+                            <textarea placeholder="Transmission payload..." className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-4 px-4 text-xs font-bold text-white min-h-[150px] resize-none focus:border-red-500/40" value={broadcast.message} onChange={(e) => setBroadcast({...broadcast, message: e.target.value})} />
+                            <button onClick={async () => {
+                              setDispatching(true);
+                              try {
+                                const res = await fetch("/api/admin/notifications", {
+                                  method: "POST",
+                                  body: JSON.stringify({ leadId: selectedLead.id, ...broadcast })
+                                });
+                                if (res.ok) {
+                                  setBroadcast({ title: "", message: "", type: "web" });
+                                  alert("Transmission Successful");
+                                }
+                              } catch (err) { alert("Transmission Failed"); } finally { setDispatching(false); }
+                            }} disabled={dispatching || !broadcast.title || !broadcast.message} className="w-full py-4 bg-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest text-white italic shadow-lg shadow-red-900/20">
+                               {dispatching ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Initiate Dispatch"}
+                            </button>
                          </div>
                       </section>
                     ) : (
