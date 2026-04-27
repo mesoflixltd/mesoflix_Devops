@@ -11,6 +11,7 @@ export const leads = pgTable("leads", {
   whatsapp: text("whatsapp").notNull(),
   projectType: text("project_type").default("Deriv Site Ecosystem"),
   message: text("message"),
+  magicKey: uuid("magic_key").defaultRandom().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

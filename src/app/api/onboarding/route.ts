@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { leads } from "@/db/schema";
 import { NextResponse } from "next/server";
 
+import { sendWelcomeEmail } from "@/lib/email";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
@@ -22,6 +24,14 @@ export async function POST(req: Request) {
       apiConfig,
       whatsapp,
     }).returning();
+
+    // Fire & Forget the Welcome Email so the UI doesn't lag
+    sendWelcomeEmail({
+      name: newLead.name,
+      email: newLead.email,
+      domainName: newLead.domainName,
+      magicKey: newLead.magicKey
+    }).catch(err => console.error("Email Dispatch Error:", err));
 
     return NextResponse.json({ success: true, lead: newLead });
   } catch (error) {
