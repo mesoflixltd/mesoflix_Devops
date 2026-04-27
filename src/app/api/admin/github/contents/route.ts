@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     const repo = url.searchParams.get("repo"); // owner/repo-name
     if (!repo) return NextResponse.json({ error: "Repo hash required." }, { status: 400 });
 
-    const path = "public/bot";
+    const path = url.searchParams.get("path") || "";
     const response = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?ref=master`, {
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -38,15 +38,18 @@ export async function GET(req: Request) {
     }
 
     const contents = await response.json();
-    const bots = contents.filter((f: any) => f.name.endsWith(".xml")).map((f: any) => ({
+    
+    // Support both files (.xml) and directories (for navigation)
+    const items = contents.map((f: any) => ({
       name: f.name,
       path: f.path,
       sha: f.sha,
       size: f.size,
-      downloadUrl: f.download_url
-    }));
+      downloadUrl: f.download_url,
+      type: f.type // "dir" or "file"
+    })).filter((f: any) => f.type === "dir" || f.name.endsWith(".xml"));
 
-    return NextResponse.json({ success: true, files: bots });
+    return NextResponse.json({ success: true, files: items });
 
   } catch (error) {
     return NextResponse.json({ error: "Cluster retrieval failure." }, { status: 500 });

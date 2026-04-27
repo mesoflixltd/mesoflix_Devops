@@ -7,7 +7,7 @@ import {
   Database, Globe, Menu, X, Zap, Activity, Loader2, CheckCircle2,
   Mail, MessageSquare, Megaphone, GitBranch, Terminal, Key, 
   ExternalLink, Code2, Star, Clock, AlertCircle, User, Info, Smartphone,
-  FileCode, Upload, Trash2, Edit3, Save, ChevronLeft, Download
+  FileCode, Upload, Trash2, Edit3, Save, ChevronLeft, Download, Folder
 } from "lucide-react";
 
 type View = "leads" | "notifications" | "github" | "logs";
@@ -32,6 +32,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
   // Repo Explorer State
   const [selectedRepo, setSelectedRepo] = useState<any>(null); // { fullName, name }
   const [repoFiles, setRepoFiles] = useState<any[]>([]);
+  const [currentPath, setCurrentPath] = useState("");
   const [fetchingFiles, setFetchingFiles] = useState(false);
   const [fileToEdit, setFileToEdit] = useState<any>(null); 
   const [newBotContent, setNewBotContent] = useState("");
@@ -123,11 +124,12 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
     } catch (err) { console.error(err); } finally { setFetchingRepos(false); }
   };
 
-  const handleOpenRepo = async (repo: any) => {
+  const handleOpenRepo = async (repo: any, path: string = "") => {
     setSelectedRepo(repo);
+    setCurrentPath(path);
     setFetchingFiles(true);
     try {
-      const res = await fetch(`/api/admin/github/contents?repo=${repo.fullName}`);
+      const res = await fetch(`/api/admin/github/contents?repo=${repo.fullName}&path=${path}`);
       const data = await res.json();
       if (data.files) setRepoFiles(data.files);
     } catch (err) { console.error(err); } finally { setFetchingFiles(false); }
@@ -144,8 +146,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
         sha: file.sha 
       } : {
         repo: selectedRepo.fullName,
-        path: `public/bot/${newBotName || file.name}`,
-        originalPath: file.path,
+        path: file.path, // Use original path for edits
         content: newBotContent,
         sha: file.sha
       };
@@ -156,7 +157,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
       });
       if (res.ok) {
         setFileToEdit(null);
-        handleOpenRepo(selectedRepo); // Refresh
+        handleOpenRepo(selectedRepo, currentPath); // Refresh same path
       }
     } catch (err) { console.error(err); } finally { setSaving(false); }
   };
@@ -179,7 +180,6 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col font-inter selection:bg-red-500/30 overflow-x-hidden">
       
-      {/* \uD83D\uDD1D ADMIN TOP BAR */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 z-50 flex items-center justify-between px-6">
         <div className="flex items-center gap-4">
           <button onClick={() => setIsMobileOpen(!isMobileOpen)} className="lg:hidden p-2 text-white/50 hover:text-white transition-all"><Menu className="w-5 h-5" /></button>
@@ -201,7 +201,6 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
       </header>
 
       <div className="flex flex-1 pt-16">
-        {/* \uD83D\uDCC1 ADMIN SIDEBAR */}
         <aside className={`fixed left-0 top-16 bottom-0 w-64 border-r border-white/5 bg-[#020617] lg:flex flex-col p-6 space-y-8 z-40 transition-transform duration-500 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
            <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 px-4 mb-4 italic">Management Shell</p>
@@ -212,7 +211,6 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
            </div>
         </aside>
 
-        {/* \uD83E\uDDE9 ADMIN MAIN CONTENT */}
         <main className="flex-1 lg:ml-64 p-5 md:p-10 max-w-7xl mx-auto w-full space-y-10 min-h-screen">
            
            <AnimatePresence mode="wait">
@@ -395,10 +393,19 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                          <button onClick={() => setSelectedRepo(null)} className="p-3 bg-white/5 rounded-2xl hover:text-red-500 transition-all"><ChevronLeft className="w-5 h-5" /></button>
                          <div>
                             <h2 className="text-3xl font-black uppercase tracking-tighter italic text-white leading-none">{selectedRepo.name}</h2>
-                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mt-1">public / bot / registry</p>
+                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mt-1">{currentPath || 'root'}</p>
                          </div>
                       </div>
-                      <button className="px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-emerald-900/40 transform active:scale-95 transition-all"><Upload className="w-4 h-4" /> Upload Bot</button>
+                      <div className="flex items-center gap-4">
+                         {currentPath && (
+                            <button onClick={() => {
+                               const parts = currentPath.split('/');
+                               parts.pop();
+                               handleOpenRepo(selectedRepo, parts.join('/'));
+                            }} className="px-6 py-3 border border-white/10 text-white/30 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all italic flex items-center gap-2">Parent Dir</button>
+                         )}
+                         <button className="px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-emerald-900/40 transform active:scale-95 transition-all"><Upload className="w-4 h-4" /> Upload Bot</button>
+                      </div>
                    </header>
 
                    <div className="bg-[#020617] border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl">
@@ -409,17 +416,25 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                            {repoFiles.map(file => (
                              <div key={file.sha} className="p-8 flex items-center justify-between group hover:bg-white/[0.01]">
                                 <div className="flex items-center gap-6">
-                                   <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center group-hover:bg-blue-600/20 group-hover:border-blue-500/40 transition-all shadow-xl"><FileCode className="w-5 h-5 text-blue-500" /></div>
+                                   {file.type === 'dir' ? (
+                                      <div onClick={() => handleOpenRepo(selectedRepo, file.path)} className="w-12 h-12 rounded-2xl bg-amber-600/10 border border-amber-500/20 flex items-center justify-center cursor-pointer hover:bg-amber-600/20 transition-all"><Folder className="w-5 h-5 text-amber-500" /></div>
+                                   ) : (
+                                      <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shadow-xl"><FileCode className="w-5 h-5 text-blue-500" /></div>
+                                   )}
                                    <div>
-                                      <p className="text-sm font-black text-white italic truncate max-w-xs">{file.name}</p>
-                                      <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-1">SHA: {file.sha.substring(0,8)} | Size: {Math.round(file.size/1024)}KB</p>
+                                      <p className={`text-sm font-black italic truncate max-w-xs ${file.type === 'dir' ? 'text-amber-500 cursor-pointer' : 'text-white'}`} onClick={() => file.type === 'dir' && handleOpenRepo(selectedRepo, file.path)}>{file.name}</p>
+                                      <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-1">
+                                         {file.type === 'dir' ? 'DIRECTORY' : `SHA: ${file.sha.substring(0,8)} | Size: ${Math.round(file.size/1024)}KB`}
+                                      </p>
                                    </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                   <button onClick={() => { setFileToEdit(file); setNewBotName(file.name); }} className="p-3 bg-white/5 text-white/40 hover:text-white rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button>
-                                   <button onClick={() => handleUpdateFile(file, true)} className="p-3 bg-red-600/10 text-red-500/40 hover:text-red-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button>
-                                   <a href={file.downloadUrl} target="_blank" className="p-3 bg-white/5 text-white/40 hover:text-white rounded-xl transition-all"><Download className="w-4 h-4" /></a>
-                                </div>
+                                {file.type !== 'dir' && (
+                                   <div className="flex items-center gap-3">
+                                      <button onClick={() => { setFileToEdit(file); setNewBotName(file.name); }} className="p-3 bg-white/5 text-white/40 hover:text-white rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button>
+                                      <button onClick={() => handleUpdateFile(file, true)} className="p-3 bg-red-600/10 text-red-500/40 hover:text-red-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button>
+                                      <a href={file.downloadUrl} target="_blank" className="p-3 bg-white/5 text-white/40 hover:text-white rounded-xl transition-all"><Download className="w-4 h-4" /></a>
+                                   </div>
+                                )}
                              </div>
                            ))}
                         </div>
@@ -437,7 +452,6 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
         </main>
       </div>
 
-      {/* \uD83D\uDD2E MODAL: BOT MANAGEMENT */}
       <AnimatePresence>
          {fileToEdit && (
             <>
@@ -476,7 +490,6 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
          )}
       </AnimatePresence>
 
-      {/* \uD83D\uDD2E LEAD CONTROLLER OVERLAY */}
       <AnimatePresence>
          {selectedLead && (
            <>
