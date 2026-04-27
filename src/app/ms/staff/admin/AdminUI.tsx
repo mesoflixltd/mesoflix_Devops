@@ -74,6 +74,22 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
     }
   };
 
+  const handleSaveLifecycle = async () => {
+    if (!activeProject || !localStatuses) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/projects/${activeProject.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(localStatuses)
+      });
+      if (res.ok) {
+        setProjects(projects.map(p => p.id === activeProject.id ? { ...p, ...localStatuses } : p));
+        setSelectedLead(null);
+      }
+    } catch (err) { console.error(err); } finally { setSaving(false); }
+  };
+
   const handleSaveToken = async () => {
     setSaving(true);
     try {
