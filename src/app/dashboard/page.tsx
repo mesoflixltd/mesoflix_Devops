@@ -8,9 +8,9 @@ import { cookies } from "next/headers";
 import DashboardUI from "./DashboardUI";
 import { Rocket, ShieldAlert } from "lucide-react";
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ auth_token?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ auth_token?: string; token?: string }> }) {
   const awaitedParams = await searchParams;
-  const token = awaitedParams?.auth_token;
+  const token = awaitedParams?.token || awaitedParams?.auth_token;
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("mesoflix_session")?.value;
 
