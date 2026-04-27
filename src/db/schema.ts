@@ -22,3 +22,12 @@ export const projects = pgTable("projects", {
   status: text("status").default("pending").notNull(), // pending, active, completed
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const devices = pgTable("devices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: uuid("lead_id").references(() => leads.id).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastActive: timestamp("last_active").defaultNow().notNull(),
+});

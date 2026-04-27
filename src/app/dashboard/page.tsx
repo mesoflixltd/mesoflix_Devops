@@ -14,30 +14,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("mesoflix_session")?.value;
 
-  const validToken = token || sessionToken;
+  // 1. Intercept URL parameter attempts and reroute them through the Auth API strictly
+  if (token) {
+    redirect(`/api/auth/verify?token=${token}`);
+  }
 
-  // 1. Initial Gatekeeper Check
-  if (!validToken) {
+  // 2. Initial Gatekeeper Check (Only reads the secure session cookie)
+  if (!sessionToken) {
     return <UnauthorizedView />;
   }
 
-  // 2. Database Identity Verification
-  const [lead] = await db.select().from(leads).where(eq(leads.magicKey, validToken)).limit(1);
+  // 3. Database Identity Verification
+  const [lead] = await db.select().from(leads).where(eq(leads.magicKey, sessionToken)).limit(1);
 
   if (!lead) {
     return <UnauthorizedView />;
-  }
-
-  // 3. Drop highly secure tracking session via HTTP-only Cookie and strip the URL token to hide it
-  if (token && !sessionToken) {
-    cookieStore.set("mesoflix_session", validToken, { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === "production", 
-      maxAge: 60 * 60 * 24 * 30, // 30 Days persistence 
-      path: "/",
-      sameSite: "lax"
-    });
-    redirect("/dashboard"); 
   }
 
   // 4. Pass validated identity layer to the interactive client UI

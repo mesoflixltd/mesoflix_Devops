@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { leads } from "@/db/schema";
+import { leads, projects } from "@/db/schema";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { sendWelcomeEmail } from "@/lib/email";
@@ -30,6 +30,13 @@ export async function POST(req: Request) {
       apiConfig,
       whatsapp,
     }).returning();
+
+    // 2. Automatically Initialize the Project Database Space
+    await db.insert(projects).values({
+      leadId: newLead.id,
+      title: domainName,
+      status: "pending"
+    });
 
     // AWAIT the Welcome Email so the serverless function doesn't instantly terminate
     await sendWelcomeEmail({

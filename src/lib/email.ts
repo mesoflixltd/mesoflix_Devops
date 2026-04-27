@@ -18,7 +18,7 @@ export async function sendWelcomeEmail({
     throw new Error("Missing Brevo API Key Environment Variable.");
   }
 
-  const magicLink = `${SITE_URL}/dashboard?auth_token=${magicKey}`;
+  const magicLink = `${SITE_URL}/api/auth/verify?token=${magicKey}`;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -51,8 +51,9 @@ export async function sendWelcomeEmail({
         
         <div class="box">
           <p class="text">Welcome aboard, <strong>${name}</strong>.</p>
-          <p class="text">Your institutional profile has been verified and your infrastructure for <strong>${domainName}</strong> is now securely linked to the Mesoflix Deriv Ecosystem.</p>
-          <p class="text">We utilize a zero-trust, passwordless architectural framework. The puzzle key tied specifically to your dashboard instance has been generated. Ensure you keep this link secure—it serves as your direct biometric access grant.</p>
+          <p class="text">Your institutional profile has been verified and your infrastructure for <strong>${domainName}</strong> is now securely linked to the Mesoflix Ecosystem.</p>
+          <p class="text"><strong>Development will take approximately 24 hours.</strong> If it delays, you can always contact our support framework.</p>
+          <p class="text">We utilize a zero-trust, passwordless architectural framework. A puzzle key tied specifically to your dashboard instance has been generated. By clicking the link below, your device footprint will be explicitly tracked and limited for security.</p>
         </div>
 
         <div class="btn-wrapper">
@@ -67,7 +68,9 @@ export async function sendWelcomeEmail({
           <div class="socials">
             <a href="https://twitter.com" target="_blank" class="social-link">X (Twitter)</a> | 
             <a href="https://t.me" target="_blank" class="social-link">Telegram</a> | 
-            <a href="https://wa.me" target="_blank" class="social-link">WhatsApp</a>
+            <a href="https://wa.me" target="_blank" class="social-link">WhatsApp</a> | 
+            <a href="https://tiktok.com" target="_blank" class="social-link">TikTok</a> | 
+            <a href="https://instagram.com" target="_blank" class="social-link">Instagram</a>
           </div>
           <p class="disclaimer">© 2026 Mesoflix Systems. Elite Trading Architecture.</p>
         </div>
