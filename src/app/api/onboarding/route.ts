@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { leads } from "@/db/schema";
 import { NextResponse } from "next/server";
-
+import { eq } from "drizzle-orm";
 import { sendWelcomeEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,12 @@ export async function POST(req: Request) {
 
     if (!name || !email || !clientId || !domainName || !domainProvider || !apiConfig || !whatsapp) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // 1. Prevent Duplication Spam
+    const existing = await db.select().from(leads).where(eq(leads.email, email)).limit(1);
+    if (existing.length > 0) {
+      return NextResponse.json({ error: "DUPLICATE: This email or profile is already registered." }, { status: 409 });
     }
 
     const [newLead] = await db.insert(leads).values({

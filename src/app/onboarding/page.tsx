@@ -136,8 +136,8 @@ function OnboardingContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.whatsapp || !formData.domainName) {
-      alert("Please fill in all registration fields.");
+    if (!formData.name || !formData.email || !formData.whatsapp || !formData.domainName || !formData.clientId) {
+      alert("Please fill in all registration fields, including your Client ID.");
       return;
     }
     if (!formData.acceptedTerms) {
