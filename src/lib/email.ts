@@ -110,3 +110,72 @@ export async function sendWelcomeEmail({
     console.error("Brevo API Fetch Error:", error);
   }
 }
+
+export async function sendAdminWelcomeEmail({ 
+  email, 
+  magicKey 
+}: { 
+  email: string; 
+  magicKey: string; 
+}) {
+  const BREVO_API_KEY = process.env.BREVO_API_KEY;
+  const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || "admin@tradermind.site";
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tradermind.site";
+
+  if (!BREVO_API_KEY) throw new Error("Missing Brevo API Key.");
+
+  // Force production domain and hidden admin path
+  let ADMIN_URL = SITE_URL.includes("netlify.app") ? "https://tradermind.site" : SITE_URL;
+  const magicLink = `${ADMIN_URL}/api/auth/admin/verify?token=${magicKey}`;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <style>
+        body { background-color: #020617; color: #ffffff; font-family: sans-serif; }
+        .container { max-width: 600px; margin: 40px auto; padding: 40px; border: 1px solid #1e293b; background-color: #020617; border-radius: 24px; text-align: center; }
+        .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; font-style: italic; color: #ef4444; }
+        .title { font-size: 32px; font-weight: 900; margin: 20px 0; color: #ffffff; text-transform: uppercase; letter-spacing: -2px; }
+        .desc { color: #94a3b8; font-size: 16px; line-height: 1.6; margin-bottom: 40px; }
+        .btn { display: inline-block; background-color: #ef4444; color: #ffffff; padding: 18px 36px; border-radius: 16px; text-decoration: none; font-weight: 900; text-transform: uppercase; font-size: 14px; letter-spacing: 2px; }
+        .footer { margin-top: 60px; font-size: 11px; color: #475569; border-top: 1px solid #1e293b; padding-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="logo">Institutional Core</div>
+        <h1 class="title">Admin Authority Access</h1>
+        <p class="desc">A secure administrative session has been initialized for node: ${email}. Proceed below to enter the Mesoflix Staff Command Centre.</p>
+        <a href="${magicLink}" class="btn">Enter Command Centre</a>
+        <div class="footer">
+          This is an automated system notification. Unauthorized access attempts are logged and neutralized.
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "api-key": BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: { name: "Mesoflix Authority", email: SENDER_EMAIL },
+      to: [{ email }],
+      subject: "RE: Admin Authority Access Node",
+      htmlContent: htmlContent,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("Brevo API Error:", errorData);
+    throw new Error(`Email failed: ${response.statusText}`);
+  }
+
+  return response.json();
+}

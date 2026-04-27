@@ -41,13 +41,13 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Dynamic Progress Matrix
+  // Dynamic Progress Matrix (Driven by Admin Authority)
   const PROGRESS_STEPS = [
-    { id: "account", label: "Account Created", completed: true, date: "Apr 26" },
-    { id: "client_id", label: "Client ID Verified", completed: !!lead?.clientId, date: lead?.clientId ? "Apr 26" : null },
-    { id: "domain", label: "Domain Mapping", completed: false, date: null }, 
-    { id: "dev", label: "Core Development", completed: false, date: null },
-    { id: "deploy", label: "Cloud Deployment", completed: false, date: null }
+    { id: "account", label: "Account Created", completed: project?.accountStatus === 'completed' || true, date: "Apr 26" },
+    { id: "client_id", label: "Client ID Verified", completed: (project?.clientIdStatus === 'completed') || !!lead?.clientId, date: (project?.clientIdStatus === 'completed' || lead?.clientId) ? "Apr 26" : null },
+    { id: "domain", label: "Domain Mapping", completed: project?.domainStatus === 'completed', date: project?.domainStatus === 'completed' ? "Synced" : null }, 
+    { id: "dev", label: "Core Development", completed: project?.devStatus === 'completed', date: project?.devStatus === 'completed' ? "Live" : null },
+    { id: "deploy", label: "Cloud Deployment", completed: project?.deployStatus === 'completed', date: project?.deployStatus === 'completed' ? "Verfied" : null }
   ];
 
   const completedCount = PROGRESS_STEPS.filter(s => s.completed).length;
