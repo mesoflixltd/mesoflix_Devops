@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const token = url.searchParams.get("token");
 
     if (!token) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/dashboard", url.origin));
     }
 
     // Identify the user based on the Magic Key
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
     if (!user) {
       // Invalid token, drop them at the auth gate
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/dashboard", url.origin));
     }
 
     // Capture telemetry securely
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
     });
 
     // Force redirection to the secure enclosure
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL("/dashboard", url.origin));
 
   } catch (error) {
     console.error("Auth Interceptor Error:", error);
