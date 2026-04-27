@@ -18,10 +18,10 @@ export const metadata: Metadata = {
     siteName: "Mesoflix Systems",
     images: [
       {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Mesoflix Systems Social Preview",
+        url: "/favicon.png",
+        width: 800,
+        height: 800,
+        alt: "Mesoflix Systems Logo",
       },
     ],
     locale: "en_US",
@@ -31,14 +31,12 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Mesoflix Systems | Enterprise Deriv Site Ecosystems",
     description: "Architectural excellence in trading bot automation and brokerage web infrastructure.",
-    images: ["/og-image.png"],
+    images: ["/favicon.png"],
   },
   icons: {
-    icon: [
-      { url: "/favicon.png?v=2", type: "image/png" },
-      { url: "/favicon.png?v=2", sizes: "32x32", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png?v=2",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   }
 };
 
