@@ -46,6 +46,7 @@ export const admins = pgTable("admins", {
   email: text("email").notNull().unique(),
   phone: text("phone"),
   magicKey: uuid("magic_key").defaultRandom().unique(),
+  githubToken: text("github_token"), // Encrypted or plain PAT
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
