@@ -19,11 +19,21 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
     redirect(`/api/auth/admin/verify?token=${token}`);
   }
 
-  if (!sessionToken) {
+  // Institutional Authorization Check
+  const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+  if (!sessionToken || !isUuid(sessionToken)) {
     return <AdminLoginGate />;
   }
 
-  const [admin] = await db.select().from(admins).where(eq(admins.magicKey, sessionToken)).limit(1);
+  let admin;
+  try {
+    const [adminData] = await db.select().from(admins).where(eq(admins.magicKey, sessionToken)).limit(1);
+    admin = adminData;
+  } catch (error) {
+    console.error("Dashboard Authority Check Failed:", error);
+    return <AdminLoginGate />;
+  }
 
   if (!admin) {
     return <AdminLoginGate />;

@@ -10,8 +10,10 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
+    const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
-    if (!token) {
+    if (!token || !isUuid(token)) {
+      console.warn("Invalid or missing admin token:", token);
       const fallbackUrl = new URL("/ms/staff/admin", req.url);
       fallbackUrl.search = "";
       return NextResponse.redirect(fallbackUrl);
@@ -20,6 +22,7 @@ export async function GET(req: Request) {
     const [admin] = await db.select().from(admins).where(eq(admins.magicKey, token)).limit(1);
 
     if (!admin) {
+      console.warn("No admin found for token:", token);
       const fallbackUrl = new URL("/ms/staff/admin", req.url);
       fallbackUrl.search = "";
       return NextResponse.redirect(fallbackUrl);
