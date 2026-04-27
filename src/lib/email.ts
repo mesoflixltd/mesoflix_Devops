@@ -11,7 +11,12 @@ export async function sendWelcomeEmail({
 }) {
   const BREVO_API_KEY = process.env.BREVO_API_KEY;
   const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || "admin@tradermind.site";
-  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tradermind.site";
+  
+  // Force production domain for emails to avoid .netlify.app redirects
+  let SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tradermind.site";
+  if (SITE_URL.includes("netlify.app")) {
+    SITE_URL = "https://tradermind.site";
+  }
 
   if (!BREVO_API_KEY) {
     console.error("FATAL: No Brevo API key found inside Next.js process! THE SERVER MUST BE RESTARTED.");

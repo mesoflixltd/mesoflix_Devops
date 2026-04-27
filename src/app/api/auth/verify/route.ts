@@ -70,7 +70,7 @@ export async function GET(req: Request) {
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24 * 30, // 30 days
-      sameSite: "strict",
+      sameSite: "lax",
     });
 
     // Force redirection to the secure enclosure
