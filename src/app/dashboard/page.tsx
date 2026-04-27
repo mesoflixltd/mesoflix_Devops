@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { db } from "@/db";
-import { leads } from "@/db/schema";
+import { leads, projects } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -31,8 +31,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     return <UnauthorizedView />;
   }
 
-  // 4. Pass validated identity layer to the interactive client UI
-  return <DashboardUI lead={lead} />;
+  // Fetch contextual Project ecosystem details
+  const [project] = await db.select().from(projects).where(eq(projects.leadId, lead.id)).limit(1);
+
+  // 4. Pass validated identity layer and project context to the interactive client UI
+  return <DashboardUI lead={lead} project={project || null} />;
 }
 
 function UnauthorizedView() {
