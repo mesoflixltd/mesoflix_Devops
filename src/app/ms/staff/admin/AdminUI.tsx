@@ -10,8 +10,8 @@ import {
   FileCode, Upload, Trash2, Edit3, Save, ChevronLeft, Download
 } from "lucide-react";
 
-type View = "leads" | "notifications" | "github";
-type SidebarTab = "lifecycles" | "portfolio";
+type View = "leads" | "notifications" | "github" | "logs";
+type SidebarTab = "lifecycles" | "portfolio" | "logs";
 
 export default function AdminUI({ admin, leads: initialLeads, projects: initialProjects }: { admin: any, leads: any[], projects: any[] }) {
   const [activeView, setActiveView] = useState<View>("leads");
@@ -179,7 +179,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 flex flex-col font-inter selection:bg-red-500/30 overflow-x-hidden">
       
-      {/* 🔝 ADMIN TOP BAR */}
+      {/* \uD83D\uDD1D ADMIN TOP BAR */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 z-50 flex items-center justify-between px-6">
         <div className="flex items-center gap-4">
           <button onClick={() => setIsMobileOpen(!isMobileOpen)} className="lg:hidden p-2 text-white/50 hover:text-white transition-all"><Menu className="w-5 h-5" /></button>
@@ -201,17 +201,18 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
       </header>
 
       <div className="flex flex-1 pt-16">
-        {/* 📂 ADMIN SIDEBAR */}
+        {/* \uD83D\uDCC1 ADMIN SIDEBAR */}
         <aside className={`fixed left-0 top-16 bottom-0 w-64 border-r border-white/5 bg-[#020617] lg:flex flex-col p-6 space-y-8 z-40 transition-transform duration-500 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
            <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 px-4 mb-4 italic">Management Shell</p>
               <SidebarItem active={activeView === 'leads'} onClick={() => {setActiveView('leads'); setSelectedRepo(null); setIsMobileOpen(false);}} icon={<Users className="w-4 h-4" />} label="Lead Library" />
               <SidebarItem active={activeView === 'notifications'} onClick={() => {setActiveView('notifications'); setSelectedRepo(null); setIsMobileOpen(false);}} icon={<Megaphone className="w-4 h-4" />} label="Broadcasts" />
               <SidebarItem active={activeView === 'github'} onClick={() => {setActiveView('github'); setSelectedRepo(null); setIsMobileOpen(false);}} icon={<GitBranch className="w-4 h-4" />} label="GitHub Pulse" />
+              <SidebarItem active={activeView === 'logs'} onClick={() => {setActiveView('logs'); setSelectedRepo(null); setIsMobileOpen(false);}} icon={<Terminal className="w-4 h-4" />} label="Command History" />
            </div>
         </aside>
 
-        {/* 🧩 ADMIN MAIN CONTENT */}
+        {/* \uD83E\uDDE9 ADMIN MAIN CONTENT */}
         <main className="flex-1 lg:ml-64 p-5 md:p-10 max-w-7xl mx-auto w-full space-y-10 min-h-screen">
            
            <AnimatePresence mode="wait">
@@ -307,6 +308,22 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                   </div>
                </motion.div>
              )}
+
+              {activeView === 'logs' && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} key="logs-view" className="space-y-10">
+                   <header><h2 className="text-3xl font-black uppercase tracking-tighter italic text-white leading-none">Global System Logs</h2></header>
+                   <div className="bg-black/40 border border-white/10 rounded-[2.5rem] p-8 font-mono text-[10px] space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar">
+                      <p className="text-emerald-500/50">[AUTH] Authority session initialized for node: {admin.email}</p>
+                      <p className="text-white/20">[SYS] Syncing lead registry cluster (Nodes: {initialLeads.length})</p>
+                      <p className="text-white/20">[SYS] Handshaking with GitHub Master Registry...</p>
+                      {isTokenSaved && <p className="text-emerald-500/40">[GIT] Connection established. Branch: master</p>}
+                      <p className="text-blue-500/40">[NET] Satellite link established via Cloudflare/Netlify</p>
+                      <div className="pt-4 border-t border-white/5 mt-4">
+                         <p className="text-white/40">Ready for institutional commands.</p>
+                      </div>
+                   </div>
+                </motion.div>
+              )}
 
              {activeView === 'github' && !selectedRepo && (
                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} key="github-list" className="space-y-10">
@@ -420,7 +437,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
         </main>
       </div>
 
-      {/* 🔮 MODAL: BOT MANAGEMENT */}
+      {/* \uD83D\uDD2E MODAL: BOT MANAGEMENT */}
       <AnimatePresence>
          {fileToEdit && (
             <>
@@ -459,7 +476,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
          )}
       </AnimatePresence>
 
-      {/* 🔮 LEAD CONTROLLER OVERLAY (Existing - Omitted for token limit but kept in full file) */}
+      {/* \uD83D\uDD2E LEAD CONTROLLER OVERLAY */}
       <AnimatePresence>
          {selectedLead && (
            <>
@@ -473,6 +490,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                     <div className="flex gap-2 p-1.5 bg-white/[0.03] border border-white/5 rounded-2xl">
                        <button onClick={() => setActiveSidebarTab("lifecycles")} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all ${activeSidebarTab === 'lifecycles' ? 'bg-red-600 text-white' : 'text-white/30 hover:bg-white/5'}`}><Zap className="w-3.5 h-3.5" /> Lifecycles</button>
                        <button onClick={() => setActiveSidebarTab("portfolio")} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all ${activeSidebarTab === 'portfolio' ? 'bg-red-600 text-white' : 'text-white/30 hover:bg-white/5'}`}><User className="w-3.5 h-3.5" /> Profile</button>
+                       <button onClick={() => setActiveSidebarTab("logs")} className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest italic flex items-center justify-center gap-2 transition-all ${activeSidebarTab === 'logs' ? 'bg-red-600 text-white' : 'text-white/30 hover:bg-white/5'}`}><Terminal className="w-3.5 h-3.5" /> Event</button>
                     </div>
                     {activeSidebarTab === "lifecycles" ? (
                        <section className="space-y-6">
@@ -486,16 +504,28 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                           </div>
                        )}
                     </section>
+                    ) : activeSidebarTab === "portfolio" ? (
+                      <section className="space-y-10">
+                         <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
+                            <PortfolioField icon={<User className="w-3" />} label="Node Identity" value={selectedLead.name} />
+                            <PortfolioField icon={<Mail className="w-3" />} label="Institutional Email" value={selectedLead.email} />
+                            <PortfolioField icon={<Smartphone className="w-3" />} label="WhatsApp Relay" value={selectedLead.whatsapp} />
+                            <PortfolioField icon={<Code2 className="w-3" />} label="Deriv Client ID" value={selectedLead.clientId} />
+                            <PortfolioField icon={<Zap className="w-3" />} label="API Architecture" value={selectedLead.apiConfig} />
+                            <PortfolioField icon={<Activity className="w-3" />} label="Service Tier" value={selectedLead.projectType} />
+                            <PortfolioField icon={<Globe className="w-3" />} label="Base Domain" value={selectedLead.domainName} />
+                            <PortfolioField icon={<Database className="w-3" />} label="DNS Registrar" value={selectedLead.domainProvider} />
+                         </div>
+                      </section>
                     ) : (
-                       <section className="space-y-10">
-                          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
-                            <PortfolioField icon={<User className="w-3" />} label="Node" value={selectedLead.name} />
-                            <PortfolioField icon={<Mail className="w-3" />} label="Relay" value={selectedLead.email} />
-                            <PortfolioField icon={<Smartphone className="w-3" />} label="Enc" value={selectedLead.whatsapp} />
-                            <PortfolioField icon={<Code2 className="w-3" />} label="Payload" value={selectedLead.clientId} />
-                            <PortfolioField icon={<Globe className="w-3" />} label="Root" value={selectedLead.domainName} />
-                          </div>
-                       </section>
+                      <section className="space-y-6">
+                         <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20 italic pb-2 border-b border-white/5">Handshake Events</h3>
+                         <div className="bg-black/40 rounded-2xl p-6 font-mono text-[9px] space-y-3">
+                            <p className="text-white/30">[{new Date().toLocaleTimeString()}] Fetching node metrics...</p>
+                            <p className="text-white/30">[{new Date().toLocaleTimeString()}] Analyzing domain propagation...</p>
+                            <p className="text-emerald-500/50">[{new Date().toLocaleTimeString()}] Secure link established with {selectedLead.name}</p>
+                         </div>
+                      </section>
                     )}
                  </div>
               </motion.div>

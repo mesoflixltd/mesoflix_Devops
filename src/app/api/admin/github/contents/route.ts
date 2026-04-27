@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     if (!repo) return NextResponse.json({ error: "Repo hash required." }, { status: 400 });
 
     const path = "public/bot";
-    const response = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+    const response = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?ref=master`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Accept": "application/vnd.github+json",
@@ -73,7 +73,8 @@ export async function PUT(req: Request) {
          },
          body: JSON.stringify({
            message: `Institutional Rename: Purging legacy path ${originalPath}`,
-           sha: sha
+           sha: sha,
+           branch: "master"
          })
        });
        // Proceed to create the new one (nullify sha for create)
@@ -89,7 +90,8 @@ export async function PUT(req: Request) {
       body: JSON.stringify({
         message: message || "Institutional Bot Deployment: Syncing to Master Registry",
         content: btoa(content), // Content must be Base64
-        sha: originalPath && originalPath !== path ? undefined : sha // Use sha only for updates, not for new path in rename
+        sha: originalPath && originalPath !== path ? undefined : sha, // Use sha only for updates, not for new path in rename
+        branch: "master"
       })
     });
 
@@ -123,7 +125,8 @@ export async function DELETE(req: Request) {
       },
       body: JSON.stringify({
         message: `Institutional Deletion: Purging node ${path}`,
-        sha: sha
+        sha: sha,
+        branch: "master"
       })
     });
 
