@@ -512,9 +512,9 @@ function ViewTrading({ lead }: any) {
              </div>
           </div>
 
-          <div className="bg-black/60 border border-white/5 rounded-[2.5rem] p-10 md:p-14 text-center group/code">
+          <div className="bg-black/60 border border-white/5 rounded-[2.5rem] p-8 md:p-14 text-center group/code">
               <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/10 mb-6 italic group-hover/code:text-red-500 transition-colors">Encrypted App Identifier</p>
-              <code className="text-3xl md:text-5xl lg:text-6xl font-black tracking-[0.1em] text-white underline decoration-red-500/50 decoration-wavy transition-all duration-700 animate-pulse">{lead.clientId}</code>
+              <code className="text-2xl sm:text-3xl md:text-4xl font-black tracking-[0.05em] text-white underline decoration-red-500/30 decoration-wavy transition-all duration-700 animate-pulse break-all">{lead.clientId}</code>
           </div>
 
           <div className="mt-16 flex flex-wrap gap-4">
