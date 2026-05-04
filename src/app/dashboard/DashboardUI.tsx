@@ -263,9 +263,9 @@ function ViewOverview({ lead, progressPercentage, steps, switchTab }: any) {
               <div className="h-4 w-full bg-white/[0.03] rounded-full overflow-hidden border border-white/5 p-1 relative">
                  <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercentage}%` }} transition={{ duration: 1.5, ease: "circOut" }} className="h-full bg-gradient-to-r from-red-700 via-red-500 to-red-400 rounded-full relative" />
               </div>
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                  {steps.map((step: any, i: number) => (
-                    <div key={i} className="space-y-3"><div className={`h-1 w-full rounded-full ${step.completed ? 'bg-red-500' : 'bg-white/10'}`} /><p className={`text-[8px] font-black uppercase tracking-widest ${step.completed ? 'text-white' : 'text-white/20'}`}>{step.label}</p></div>
+                    <div key={i} className="space-y-3"><div className={`h-1 w-full rounded-full ${step.completed ? 'bg-red-500' : 'bg-white/10'}`} /><p className={`text-[10px] font-black uppercase tracking-widest ${step.completed ? 'text-white' : 'text-white/20'}`}>{step.label}</p></div>
                  ))}
               </div>
            </div>
@@ -315,12 +315,115 @@ function MobileInstallPrompt() {
   );
 }
 
-// Omitted subviews (Domain, Status, etc) - keeping them same as existing but refined
-function ViewDomain({ lead }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">Domain Mapping Console active...</div>; }
-function ViewStatus({ steps }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">Lifecycle Matrix processing...</div>; }
-function ViewTrading({ lead }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">API Handshake terminal active...</div>; }
-function ViewSettings({ lead }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">Identity credentials encrypted...</div>; }
-function ViewVault({ }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">Security Vault locked...</div>; }
+function ViewDomain({ lead, project }: any) { 
+  return (
+    <div className="space-y-10 animate-in fade-in duration-700">
+       <header>
+          <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Domain Settings</h2>
+          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">{lead.domainName}</p>
+       </header>
+       <div className="p-8 md:p-12 rounded-[3rem] bg-[#020617] border border-white/10 flex flex-col items-center justify-center space-y-6 shadow-2xl min-h-[400px]">
+          <Globe className="w-16 h-16 text-blue-500 animate-pulse" />
+          <div className="text-center">
+             <h3 className="text-xl font-black text-white italic">DNS Status: {project?.domainStatus === 'completed' ? 'Active' : 'Propagating'}</h3>
+             <p className="text-sm text-white/40 mt-2 max-w-md mx-auto">{project?.domainStatus === 'completed' ? 'Your domain is live and fully synchronized.' : 'Your domain nameservers are currently syncing with the global edge network. This process is fully automated.'}</p>
+          </div>
+          <div className="w-full max-w-md bg-white/5 rounded-2xl p-6 border border-white/10 flex justify-between items-center">
+             <div><p className="text-[10px] uppercase font-black tracking-widest text-white/30">Target A Record</p><p className="font-mono text-white text-sm">76.76.21.21</p></div>
+             <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+          </div>
+       </div>
+    </div>
+  ); 
+}
+
+function ViewStatus({ steps, project }: any) { 
+  return (
+    <div className="space-y-10 animate-in fade-in duration-700">
+       <header>
+          <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Project Pipeline</h2>
+          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Live Lifecycle Matrix</p>
+       </header>
+       <div className="space-y-4">
+          {steps.map((step: any, i: number) => (
+             <div key={i} className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center gap-6 shadow-xl">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${step.completed ? 'bg-red-500/20 text-red-500' : 'bg-white/5 text-white/20'}`}>
+                   {step.completed ? <CheckCircle2 className="w-6 h-6" /> : <Activity className="w-6 h-6" />}
+                </div>
+                <div>
+                   <h3 className={`text-lg font-black uppercase tracking-widest italic ${step.completed ? 'text-white' : 'text-white/40'}`}>{step.label}</h3>
+                   <p className="text-xs text-white/30 font-bold">{step.completed ? 'Completed' : 'Pending Authority Clearance'}</p>
+                </div>
+             </div>
+          ))}
+       </div>
+    </div>
+  ); 
+}
+
+function ViewTrading({ lead }: any) { 
+  return (
+    <div className="space-y-10 animate-in fade-in duration-700">
+       <header>
+          <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">API Credentials</h2>
+          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Deriv Exchange Bridge</p>
+       </header>
+       <div className="p-10 rounded-[3rem] bg-[#020617] border border-white/10 space-y-8 shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-emerald-500">
+             <ShieldCheck className="w-8 h-8 shrink-0" />
+             <div><h3 className="text-xl font-black italic">API Bridge Active</h3><p className="text-xs font-bold uppercase tracking-widest text-emerald-500/50">Secured via OAuth 2.0</p></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
+                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-white/30 mb-2">Client ID</p>
+                <p className="text-lg font-mono text-white break-all">{lead.clientId || 'Pending Sync'}</p>
+             </div>
+             <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
+                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-white/30 mb-2">Architecture</p>
+                <p className="text-lg font-black uppercase italic text-white break-all">{lead.apiConfig || 'Standard'}</p>
+             </div>
+          </div>
+       </div>
+    </div>
+  ); 
+}
+
+function ViewSettings({ lead }: any) { 
+  return (
+    <div className="space-y-10 animate-in fade-in duration-700">
+       <header>
+          <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Node Settings</h2>
+          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Identity & Preferences</p>
+       </header>
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="p-8 rounded-[3rem] bg-white/[0.02] border border-white/10 space-y-6 shadow-xl">
+             <h3 className="text-[10px] uppercase font-black tracking-[0.4em] text-red-500 mb-6 border-b border-red-500/20 pb-2">Profile Identity</h3>
+             <div className="space-y-1"><p className="text-[10px] uppercase font-black tracking-widest text-white/30">Node Name</p><p className="text-sm font-bold text-white">{lead.name}</p></div>
+             <div className="space-y-1"><p className="text-[10px] uppercase font-black tracking-widest text-white/30">Institutional Email</p><p className="text-sm font-bold text-white break-all">{lead.email}</p></div>
+             <div className="space-y-1"><p className="text-[10px] uppercase font-black tracking-widest text-white/30">WhatsApp Relay</p><p className="text-sm font-bold text-white break-all">{lead.whatsapp}</p></div>
+          </div>
+       </div>
+    </div>
+  ); 
+}
+
+function ViewVault({ lead }: any) { 
+  return (
+    <div className="space-y-10 animate-in fade-in duration-700">
+       <header>
+          <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Security Vault</h2>
+          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Encryption & Logs</p>
+       </header>
+       <div className="p-10 md:p-16 rounded-[3rem] bg-[#020617] border border-red-500/30 flex flex-col items-center justify-center space-y-6 shadow-[0_0_50px_rgba(239,68,68,0.1)] text-center">
+          <Shield className="w-20 h-20 text-red-500" />
+          <div>
+             <h3 className="text-2xl font-black text-white italic uppercase">Vault Locked</h3>
+             <p className="text-sm text-white/40 mt-3 max-w-md mx-auto">Your Node's cryptographic keys and master tokens are securely stored in a heavily encrypted enclave. Direct access is intentionally disabled for your protection.</p>
+          </div>
+       </div>
+    </div>
+  ); 
+}
 
 function ViewRepo() {
   const [files, setFiles] = useState<any[]>([]);
