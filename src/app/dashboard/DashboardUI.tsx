@@ -147,7 +147,7 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
   };
 
   if (isLocked) {
-    return <LockScreen lead={lead} onUnlock={() => { setIsLocked(false); setLastActive(Date.now()); }} />;
+    return <LockScreen lead={{ ...lead, biometricsEnabled }} onUnlock={() => { setIsLocked(false); setLastActive(Date.now()); }} />;
   }
 
   return (
@@ -559,6 +559,47 @@ function ViewVault({ lead }: any) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Biometrics Immediate Sync
+  const toggleBiometrics = async () => {
+    const newState = !biometricsEnabled;
+    if (newState) {
+       try {
+         if (!window.PublicKeyCredential) throw new Error("Biometrics not supported on this browser.");
+         const challenge = new Uint8Array(32);
+         window.crypto.getRandomValues(challenge);
+         const cred = await navigator.credentials.create({
+           publicKey: {
+             challenge,
+             rp: { name: "Mesoflix Institutional Console", id: window.location.hostname },
+             user: { id: challenge, name: lead.name || "user", displayName: lead.name || "User" },
+             pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
+             authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+             timeout: 60000,
+             attestation: "none"
+           }
+         });
+         if (!cred) return;
+       } catch(e) {
+         console.error(e);
+         alert("Biometric verification failed or was cancelled.");
+         return;
+       }
+    }
+
+    setBiometricsEnabled(newState);
+    lead.biometricsEnabled = newState; // Update local prop ref
+
+    try {
+      await fetch("/api/user/security", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ biometricsEnabled: newState })
+      });
+    } catch (e) {
+      console.error("Failed to sync biometrics to cloud registry.");
+    }
+  };
+
   const handleSaveSecurity = async () => {
     if (passcode.length !== 6 || confirmPasscode.length !== 6) {
       setError("Passcode must be exactly 6 digits.");
@@ -636,32 +677,7 @@ function ViewVault({ lead }: any) {
              
              {/* Biometrics Toggle UI */}
              <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 w-full cursor-pointer hover:bg-white/10 transition-colors" 
-                  onClick={async () => {
-                    if (!biometricsEnabled) {
-                       try {
-                         if (!window.PublicKeyCredential) throw new Error("Biometrics not supported on this browser.");
-                         const challenge = new Uint8Array(32);
-                         window.crypto.getRandomValues(challenge);
-                         const cred = await navigator.credentials.create({
-                           publicKey: {
-                             challenge,
-                             rp: { name: "Mesoflix Institutional Console", id: window.location.hostname },
-                             user: { id: challenge, name: lead.name || "user", displayName: lead.name || "User" },
-                             pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
-                             authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
-                             timeout: 60000,
-                             attestation: "none"
-                           }
-                         });
-                         if (cred) setBiometricsEnabled(true);
-                       } catch(e) {
-                         console.error(e);
-                         alert("Biometric verification failed or was cancelled.");
-                       }
-                    } else {
-                       setBiometricsEnabled(false);
-                    }
-                  }}>
+                  onClick={toggleBiometrics}>
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${biometricsEnabled ? 'bg-red-500/20 text-red-500' : 'bg-black/50 text-white/20'}`}>
                    <Fingerprint className="w-6 h-6" />
                 </div>
@@ -830,16 +846,24 @@ function ViewRepo() {
   const fetchBots = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/user/repo?path=public/bots");
-      const data = await res.json();
-      if (data.files && Array.isArray(data.files)) {
-        // Filter out non-XML files just in case
-        setFiles(data.files.filter((f: any) => f.name.endsWith('.xml')));
-      } else {
-        setFiles([]);
+      // Try multiple common repository structures to find bots
+      const pathsToTry = ["public/bots", "bots", ""];
+      let foundFiles: any[] = [];
+      
+      for (const p of pathsToTry) {
+        const res = await fetch(`/api/user/repo?path=${encodeURIComponent(p)}`);
+        const data = await res.json();
+        if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+           const xmlFiles = data.files.filter((f: any) => f.name.endsWith(".xml"));
+           if (xmlFiles.length > 0) {
+              foundFiles = data.files.filter((f: any) => f.name.endsWith(".xml") || f.type === "dir");
+              break;
+           }
+        }
       }
+      setFiles(foundFiles);
     } catch (err) {
-      console.error(err);
+      console.error("Registry sync failed.", err);
     }
     setLoading(false);
   };
