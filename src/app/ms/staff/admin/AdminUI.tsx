@@ -82,7 +82,8 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
         domainStatus: p.domainStatus || 'pending',
         devStatus: p.devStatus || 'pending',
         deployStatus: p.deployStatus || 'pending',
-        status: p.status || 'pending'
+        status: p.status || 'pending',
+        githubRepo: p.githubRepo || ''
       });
     }
   };
@@ -625,6 +626,41 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                              <ToggleItem label="Domain Mapping" completed={localStatuses.domainStatus === 'completed'} onClick={() => setLocalStatuses({...localStatuses, domainStatus: localStatuses.domainStatus === 'completed' ? 'pending' : 'completed'})} />
                              <ToggleItem label="Core Dev Build" completed={localStatuses.devStatus === 'completed'} onClick={() => setLocalStatuses({...localStatuses, devStatus: localStatuses.devStatus === 'completed' ? 'pending' : 'completed'})} />
                              <ToggleItem label="Cloud Deployment" completed={localStatuses.deployStatus === 'completed'} onClick={() => setLocalStatuses({...localStatuses, deployStatus: localStatuses.deployStatus === 'completed' ? 'pending' : 'completed'})} />
+                             
+                             <div className="pt-4 border-t border-white/5 space-y-3">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] italic text-white/40">Assigned Bot Repository</label>
+                                <select 
+                                   value={localStatuses.githubRepo} 
+                                   onChange={(e) => setLocalStatuses({...localStatuses, githubRepo: e.target.value})}
+                                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3 px-4 text-xs font-bold text-white focus:outline-none focus:border-red-500/50 appearance-none"
+                                >
+                                   <option value="">No repository assigned</option>
+                                   {repos.map((r: any) => (
+                                      <option key={r.id} value={r.fullName}>{r.fullName}</option>
+                                   ))}
+                                </select>
+                                
+                                {localStatuses.githubRepo && (
+                                   <button 
+                                      onClick={() => {
+                                         const repo = repos.find((r: any) => r.fullName === localStatuses.githubRepo);
+                                         if (repo) {
+                                            setActiveView('github');
+                                            handleOpenRepo(repo, 'public/bots');
+                                            setSelectedLead(null);
+                                         } else {
+                                            alert("Please fetch repositories in the GitHub Pulse tab first.");
+                                            setActiveView('github');
+                                            setSelectedLead(null);
+                                         }
+                                      }}
+                                      className="w-full py-3 bg-blue-600/10 text-blue-500 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all mt-2 flex items-center justify-center gap-2"
+                                   >
+                                      <Folder className="w-3.5 h-3.5" /> Manage Client Bots
+                                   </button>
+                                )}
+                             </div>
+
                              <button onClick={handleSaveLifecycle} disabled={saving} className="w-full py-4 mt-6 bg-red-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] text-white italic shadow-xl flex items-center justify-center gap-3">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Node State"}</button>
                           </div>
                        )}

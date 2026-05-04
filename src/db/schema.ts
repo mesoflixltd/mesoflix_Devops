@@ -27,6 +27,7 @@ export const projects = pgTable("projects", {
   domainStatus: text("domain_status").default("pending"),
   devStatus: text("dev_status").default("pending"),
   deployStatus: text("deploy_status").default("pending"),
+  githubRepo: text("github_repo"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

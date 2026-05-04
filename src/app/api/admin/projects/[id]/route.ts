@@ -23,10 +23,11 @@ export async function PATCH(
     
     // Whitelist valid update fields for lifecycle tracking
     const updateData: any = {};
-    if (body.domainStatus) updateData.domainStatus = body.domainStatus;
-    if (body.devStatus) updateData.devStatus = body.devStatus;
-    if (body.deployStatus) updateData.deployStatus = body.deployStatus;
-    if (body.status) updateData.status = body.status;
+    if (body.domainStatus !== undefined) updateData.domainStatus = body.domainStatus;
+    if (body.devStatus !== undefined) updateData.devStatus = body.devStatus;
+    if (body.deployStatus !== undefined) updateData.deployStatus = body.deployStatus;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.githubRepo !== undefined) updateData.githubRepo = body.githubRepo;
 
     await db.update(projects).set(updateData).where(eq(projects.id, id));
 
