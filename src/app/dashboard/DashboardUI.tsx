@@ -40,6 +40,45 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000); // Sync every minute
 
+    // Register Web Push Notifications
+    const setupWebPush = async () => {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BPsqcT8i9sGeyBdE8Sz9kCClzRJsyqBfb4O2bC_zm7gSAXlDkRvBs4_FpzZd_7ccfC6OPzvLgpEfHPbCf8Ncarg";
+            
+            // Utility to convert Base64 string to Uint8Array
+            const urlBase64ToUint8Array = (base64String: string) => {
+              const padding = '='.repeat((4 - base64String.length % 4) % 4);
+              const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+              const rawData = window.atob(base64);
+              const outputArray = new Uint8Array(rawData.length);
+              for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+              }
+              return outputArray;
+            };
+
+            const subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+
+            await fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(subscription)
+            });
+          }
+        } catch (e) {
+          console.error('Push Setup Error:', e);
+        }
+      }
+    };
+    setupWebPush();
+
     return () => {
       window.removeEventListener("scroll", handleScroll);
       clearInterval(interval);
@@ -328,9 +367,30 @@ function ViewDomain({ lead, project }: any) {
              <h3 className="text-xl font-black text-white italic">DNS Status: {project?.domainStatus === 'completed' ? 'Active' : 'Propagating'}</h3>
              <p className="text-sm text-white/40 mt-2 max-w-md mx-auto">{project?.domainStatus === 'completed' ? 'Your domain is live and fully synchronized.' : 'Your domain nameservers are currently syncing with the global edge network. This process is fully automated.'}</p>
           </div>
-          <div className="w-full max-w-md bg-white/5 rounded-2xl p-6 border border-white/10 flex justify-between items-center">
-             <div><p className="text-[10px] uppercase font-black tracking-widest text-white/30">Target A Record</p><p className="font-mono text-white text-sm">76.76.21.21</p></div>
-             <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+          <div className="w-full max-w-2xl bg-white/[0.02] rounded-3xl p-8 border border-white/10 space-y-4">
+             <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <p className="text-[10px] uppercase font-black tracking-[0.3em] text-white/30">Target Nameservers</p>
+                <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest">Active</span>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-white/[0.02] rounded-2xl border border-white/5 flex items-center justify-between group hover:border-red-500/30 transition-all">
+                   <p className="font-mono text-white/80 text-xs">dns1.p01.nsone.net</p>
+                   <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-red-500 cursor-pointer" />
+                </div>
+                <div className="p-4 bg-white/[0.02] rounded-2xl border border-white/5 flex items-center justify-between group hover:border-red-500/30 transition-all">
+                   <p className="font-mono text-white/80 text-xs">dns2.p01.nsone.net</p>
+                   <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-red-500 cursor-pointer" />
+                </div>
+                <div className="p-4 bg-white/[0.02] rounded-2xl border border-white/5 flex items-center justify-between group hover:border-red-500/30 transition-all">
+                   <p className="font-mono text-white/80 text-xs">dns3.p01.nsone.net</p>
+                   <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-red-500 cursor-pointer" />
+                </div>
+                <div className="p-4 bg-white/[0.02] rounded-2xl border border-white/5 flex items-center justify-between group hover:border-red-500/30 transition-all">
+                   <p className="font-mono text-white/80 text-xs">dns4.p01.nsone.net</p>
+                   <Copy className="w-3.5 h-3.5 text-white/20 group-hover:text-red-500 cursor-pointer" />
+                </div>
+             </div>
+             <p className="text-[9px] text-white/30 italic text-center pt-2">Update your domain registrar with these precise authoritative nameservers.</p>
           </div>
        </div>
     </div>
@@ -362,6 +422,31 @@ function ViewStatus({ steps, project }: any) {
 }
 
 function ViewTrading({ lead }: any) { 
+  const [clientId, setClientId] = useState(lead.clientId || '');
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!clientId.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/user/credentials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId })
+      });
+      if (res.ok) {
+        setIsEditing(false);
+        // We're just updating local UI without a full reload for UX
+        lead.clientId = clientId;
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
        <header>
@@ -374,9 +459,20 @@ function ViewTrading({ lead }: any) {
              <div><h3 className="text-xl font-black italic">API Bridge Active</h3><p className="text-xs font-bold uppercase tracking-widest text-emerald-500/50">Secured via OAuth 2.0</p></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
-                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-white/30 mb-2">Client ID</p>
-                <p className="text-lg font-mono text-white break-all">{lead.clientId || 'Pending Sync'}</p>
+             <div className="p-6 bg-white/5 rounded-2xl border border-white/5 relative">
+                <div className="flex justify-between items-center mb-2">
+                   <p className="text-[10px] uppercase font-black tracking-[0.2em] text-white/30">Client ID</p>
+                   {!isEditing ? (
+                      <button onClick={() => setIsEditing(true)} className="text-[9px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-colors flex items-center gap-1"><Edit3 className="w-3 h-3" /> Edit</button>
+                   ) : (
+                      <button onClick={handleSave} disabled={saving} className="text-[9px] font-black uppercase tracking-widest text-emerald-500 hover:text-emerald-400 transition-colors flex items-center gap-1">{saving ? 'Saving...' : 'Save'}</button>
+                   )}
+                </div>
+                {isEditing ? (
+                   <input type="text" value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm font-mono text-white focus:outline-none focus:border-red-500" />
+                ) : (
+                   <p className="text-lg font-mono text-white break-all">{clientId || 'Pending Sync'}</p>
+                )}
              </div>
              <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
                 <p className="text-[10px] uppercase font-black tracking-[0.2em] text-white/30 mb-2">Architecture</p>

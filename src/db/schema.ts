@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, boolean, jsonb } from "drizzle-orm/pg-core";
 
 export const leads = pgTable("leads", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -13,6 +13,7 @@ export const leads = pgTable("leads", {
   message: text("message"),
   magicKey: uuid("magic_key").defaultRandom().unique(),
   isBlocked: boolean("is_blocked").default(false).notNull(),
+  pushSubscription: jsonb("push_subscription"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -49,6 +50,7 @@ export const admins = pgTable("admins", {
   phone: text("phone"),
   magicKey: uuid("magic_key").defaultRandom().unique(),
   githubToken: text("github_token"), // Encrypted or plain PAT
+  pushSubscription: jsonb("push_subscription"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

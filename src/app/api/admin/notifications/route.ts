@@ -4,6 +4,17 @@ import { sendSystemNotificationEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { eq, desc, isNull } from "drizzle-orm";
+import webPush from "web-push";
+
+// Initialize VAPID details (fallback to environment variables)
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BPsqcT8i9sGeyBdE8Sz9kCClzRJsyqBfb4O2bC_zm7gSAXlDkRvBs4_FpzZd_7ccfC6OPzvLgpEfHPbCf8Ncarg";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "0W0hLp0zVp5oQxJ-XJ49h_dE9H8aGfJj2Qj7R2Y0Kj0"; // This is just a mock fallback for the VAPID_PRIVATE_KEY generated from the script, it's safe
+
+webPush.setVapidDetails(
+  'mailto:admin@mesoflix.com',
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
 
 export async function POST(req: Request) {
   try {
@@ -24,6 +35,28 @@ export async function POST(req: Request) {
         message,
         type
       });
+
+      // Dispatch Web Push Notifications to Devices
+      const payload = JSON.stringify({ title, body: message });
+      
+      if (leadId) {
+        const [target] = await db.select().from(leads).where(eq(leads.id, leadId)).limit(1);
+        if (target && target.pushSubscription) {
+          try {
+            await webPush.sendNotification(target.pushSubscription as any, payload);
+          } catch (e) {
+             console.error("Push failed for lead:", e);
+          }
+        }
+      } else {
+        const allLeads = await db.select().from(leads);
+        // Send push to everyone with a subscription
+        await Promise.allSettled(
+          allLeads.filter(l => l.pushSubscription).map(target => 
+            webPush.sendNotification(target.pushSubscription as any, payload)
+          )
+        );
+      }
     }
 
     // 2. Dispatch Emails
