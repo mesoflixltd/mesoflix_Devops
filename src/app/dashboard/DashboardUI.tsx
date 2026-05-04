@@ -8,7 +8,7 @@ import {
   Menu, X, MessageSquare, Zap, ArrowRight, Copy, Check,
   ExternalLink, Shield, Clock as ClockIcon, ChevronRight,
   User, Search, Cpu, Mail, Megaphone, AlertCircle, Info,
-  Bot, UploadCloud, Trash2, Edit3, PlusCircle
+  Bot, UploadCloud, Trash2, Edit3, PlusCircle, Eye, EyeOff, Fingerprint
 } from "lucide-react";
 
 export default function DashboardUI({ lead, project }: { lead: any, project: any }) {
@@ -551,14 +551,20 @@ function ViewSettings({ lead }: any) {
 }
 
 function ViewVault({ lead }: any) { 
-  const [passcode, setPasscode] = useState("");
-  const [confirmPasscode, setConfirmPasscode] = useState("");
+  const [passcode, setPasscode] = useState(lead.passcode || "");
+  const [confirmPasscode, setConfirmPasscode] = useState(lead.passcode || "");
   const [autoLockTime, setAutoLockTime] = useState(lead.autoLockTime || "0");
+  const [biometricsEnabled, setBiometricsEnabled] = useState(lead.biometricsEnabled || false);
+  const [showPasscode, setShowPasscode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleSaveSecurity = async () => {
-    if (passcode && passcode !== confirmPasscode) {
+    if (passcode.length !== 6 || confirmPasscode.length !== 6) {
+      setError("Passcode must be exactly 6 digits.");
+      return;
+    }
+    if (passcode !== confirmPasscode) {
       setError("Passcodes do not match.");
       return;
     }
@@ -568,14 +574,13 @@ function ViewVault({ lead }: any) {
       const res = await fetch("/api/user/security", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passcode: passcode || undefined, autoLockTime })
+        body: JSON.stringify({ passcode: passcode, autoLockTime, biometricsEnabled })
       });
       if (res.ok) {
         alert("Security preferences updated successfully!");
-        if (passcode) lead.passcode = passcode;
+        lead.passcode = passcode;
         lead.autoLockTime = autoLockTime;
-        setPasscode("");
-        setConfirmPasscode("");
+        lead.biometricsEnabled = biometricsEnabled;
       }
     } catch (e) {
       console.error(e);
@@ -583,6 +588,35 @@ function ViewVault({ lead }: any) {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Helper to render OTP inputs
+  const renderOTPInput = (value: string, onChange: (val: string) => void) => {
+    return (
+      <div className="flex gap-2 justify-center">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <input 
+            key={i}
+            type={showPasscode ? "text" : "password"}
+            maxLength={1}
+            value={value[i] || ""}
+            onChange={(e) => {
+               const char = e.target.value.replace(/[^0-9]/g, '');
+               let newVal = value.split('');
+               newVal[i] = char;
+               onChange(newVal.join('').substring(0, 6));
+               // Focus next input automatically
+               if (char && i < 5) {
+                 const nextInput = document.getElementById(`otp-${onChange.name}-${i+1}`);
+                 nextInput?.focus();
+               }
+            }}
+            id={`otp-${onChange.name}-${i}`}
+            className="w-10 h-12 md:w-12 md:h-14 bg-black/40 border border-white/10 rounded-xl text-center text-xl font-black text-white focus:outline-none focus:border-red-500 transition-colors"
+          />
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -597,21 +631,41 @@ function ViewVault({ lead }: any) {
              <Shield className="w-16 h-16 text-red-500" />
              <div>
                 <h3 className="text-2xl font-black text-white italic uppercase">Device Lock</h3>
-                <p className="text-xs text-white/40 mt-3 max-w-sm mx-auto">Set a numeric passcode to encrypt your local session. This prevents unauthorized physical access to your node.</p>
+                <p className="text-xs text-white/40 mt-3 max-w-sm mx-auto">Set a 6-digit passcode to encrypt your local session. This prevents unauthorized physical access to your node.</p>
+             </div>
+             
+             {/* Biometrics Toggle UI */}
+             <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 w-full cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setBiometricsEnabled(!biometricsEnabled)}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${biometricsEnabled ? 'bg-red-500/20 text-red-500' : 'bg-black/50 text-white/20'}`}>
+                   <Fingerprint className="w-6 h-6" />
+                </div>
+                <div className="text-left flex-1">
+                   <h4 className="text-sm font-bold text-white uppercase tracking-widest">Biometric Login</h4>
+                   <p className="text-[10px] text-white/40 uppercase tracking-widest">Enable Touch/Face ID</p>
+                </div>
+                <div className={`w-10 h-5 rounded-full relative transition-colors ${biometricsEnabled ? 'bg-red-500' : 'bg-white/10'}`}>
+                   <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${biometricsEnabled ? 'left-[22px]' : 'left-[2px]'}`} />
+                </div>
              </div>
           </div>
 
           <div className="p-8 md:p-10 rounded-[3rem] bg-white/[0.02] border border-white/10 space-y-6">
-             <div className="space-y-4">
+             <div className="flex justify-between items-center mb-4">
+                <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block">Passcode Configuration</label>
+                <button onClick={() => setShowPasscode(!showPasscode)} className="text-white/40 hover:text-white transition-colors">
+                   {showPasscode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+             </div>
+             <div className="space-y-6">
                 <div>
-                   <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-2">New Passcode</label>
-                   <input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="••••••••" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-black text-white focus:outline-none focus:border-red-500 tracking-[0.5em] text-center" />
+                   <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-3 text-center">New Passcode</label>
+                   {renderOTPInput(passcode, setPasscode)}
                 </div>
                 <div>
-                   <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-2">Confirm Passcode</label>
-                   <input type="password" value={confirmPasscode} onChange={(e) => setConfirmPasscode(e.target.value)} placeholder="••••••••" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-black text-white focus:outline-none focus:border-red-500 tracking-[0.5em] text-center" />
+                   <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-3 text-center">Confirm Passcode</label>
+                   {renderOTPInput(confirmPasscode, setConfirmPasscode)}
                 </div>
-                <div>
+                <div className="pt-4 border-t border-white/5">
                    <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-2">Auto-Lock Timer</label>
                    <select value={autoLockTime} onChange={(e) => setAutoLockTime(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-red-500 appearance-none">
                       <option value="0" className="bg-[#020617] text-white">Immediately on Exit</option>
@@ -621,8 +675,8 @@ function ViewVault({ lead }: any) {
                    </select>
                 </div>
              </div>
-             {error && <p className="text-red-500 text-xs font-bold text-center italic">{error}</p>}
-             <button onClick={handleSaveSecurity} disabled={saving} className="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center justify-center gap-2">
+             {error && <p className="text-red-500 text-xs font-bold text-center italic mt-4">{error}</p>}
+             <button onClick={handleSaveSecurity} disabled={saving} className="w-full py-4 mt-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center justify-center gap-2">
                 <CheckCircle2 className="w-4 h-4" /> {saving ? 'Encrypting...' : 'Save Security Rules'}
              </button>
           </div>
@@ -635,21 +689,23 @@ function LockScreen({ lead, onUnlock }: any) {
   const [passcodeInput, setPasscodeInput] = useState("");
   const [error, setError] = useState("");
   const [attemptingBio, setAttemptingBio] = useState(false);
+  const [showPasscode, setShowPasscode] = useState(false);
 
-  const handleUnlock = () => {
-    if (passcodeInput === lead.passcode) {
-      onUnlock();
-    } else {
-      setError("Invalid security credential.");
-      setPasscodeInput("");
+  useEffect(() => {
+    if (passcodeInput.length === 6) {
+      if (passcodeInput === lead.passcode) {
+        onUnlock();
+      } else {
+        setError("Invalid passcode.");
+        setPasscodeInput("");
+      }
     }
-  };
+  }, [passcodeInput, lead.passcode, onUnlock]);
 
   const tryBiometrics = async () => {
     setAttemptingBio(true);
     try {
       // Simulate biometric scan (e.g. Face ID / Touch ID UI popup flow)
-      // On a real PWA this would hook into WebAuthn passkey assertion.
       setTimeout(() => {
         onUnlock();
       }, 1500);
@@ -662,43 +718,60 @@ function LockScreen({ lead, onUnlock }: any) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black overflow-hidden font-inter">
-      {/* Unique Background Image from internet */}
       <div 
         className="absolute inset-0 z-0 opacity-40 bg-cover bg-center" 
         style={{ backgroundImage: "url('https://images.unsplash.com/photo-1614064641936-a59266472434?q=80&w=2070&auto=format&fit=crop')" }} 
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/80 to-transparent z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/90 to-black/50 z-10" />
 
-      <div className="relative z-20 w-full max-w-sm p-8 rounded-[3rem] bg-black/40 backdrop-blur-3xl border border-white/10 shadow-2xl flex flex-col items-center">
-        <div className="w-20 h-20 rounded-full bg-red-600/20 border border-red-500/50 flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(239,68,68,0.3)]">
-           <ShieldCheck className="w-10 h-10 text-red-500" />
+      <div className="relative z-20 w-full max-w-sm p-8 rounded-[3rem] bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col items-center">
+        <div className="w-20 h-20 rounded-[2rem] bg-white/5 border border-white/10 flex items-center justify-center mb-6 shadow-inner backdrop-blur-sm">
+           <ShieldCheck className="w-10 h-10 text-white" />
         </div>
-        <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-2">Vault Locked</h2>
+        <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Vault Locked</h2>
         <p className="text-xs text-white/50 font-bold uppercase tracking-widest text-center mb-8">Node {lead.name} Requires Auth</p>
 
-        <div className="w-full space-y-4">
-          <input 
-            type="password" 
-            value={passcodeInput}
-            onChange={(e) => setPasscodeInput(e.target.value)}
-            placeholder="ENTER PASSCODE"
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-center text-white tracking-[1em] font-black focus:outline-none focus:border-red-500 transition-colors"
-          />
+        <div className="w-full space-y-6">
+          <div className="flex justify-center gap-2 mb-2 relative">
+             {Array.from({ length: 6 }).map((_, i) => (
+               <input 
+                 key={i}
+                 type={showPasscode ? "text" : "password"}
+                 maxLength={1}
+                 value={passcodeInput[i] || ""}
+                 onChange={(e) => {
+                    const char = e.target.value.replace(/[^0-9]/g, '');
+                    let newVal = passcodeInput.split('');
+                    newVal[i] = char;
+                    const result = newVal.join('').substring(0, 6);
+                    setPasscodeInput(result);
+                    if (char && i < 5) {
+                      document.getElementById(`lock-otp-${i+1}`)?.focus();
+                    }
+                 }}
+                 id={`lock-otp-${i}`}
+                 className="w-10 h-12 md:w-12 md:h-14 bg-white/5 border border-white/10 rounded-xl text-center text-xl font-black text-white focus:outline-none focus:border-white transition-colors"
+               />
+             ))}
+             <button onClick={() => setShowPasscode(!showPasscode)} className="absolute -right-8 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors">
+                {showPasscode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+             </button>
+          </div>
           {error && <p className="text-red-500 text-xs font-bold text-center italic">{error}</p>}
           
-          <button onClick={handleUnlock} className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-widest text-xs rounded-2xl transition-all">
-            Unlock Node
-          </button>
+          {lead.biometricsEnabled && (
+            <>
+              <div className="relative flex items-center py-4">
+                 <div className="flex-grow border-t border-white/10"></div>
+                 <span className="flex-shrink-0 mx-4 text-[9px] text-white/30 font-black uppercase tracking-widest">Or authenticate via</span>
+                 <div className="flex-grow border-t border-white/10"></div>
+              </div>
 
-          <div className="relative flex items-center py-4">
-             <div className="flex-grow border-t border-white/10"></div>
-             <span className="flex-shrink-0 mx-4 text-[9px] text-white/30 font-black uppercase tracking-widest">Or authenticate via</span>
-             <div className="flex-grow border-t border-white/10"></div>
-          </div>
-
-          <button onClick={tryBiometrics} disabled={attemptingBio} className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs rounded-2xl transition-all flex items-center justify-center gap-3">
-            <User className="w-4 h-4" /> {attemptingBio ? 'Scanning...' : 'Biometrics'}
-          </button>
+              <button onClick={tryBiometrics} disabled={attemptingBio} className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs rounded-2xl transition-all flex items-center justify-center gap-3">
+                <Fingerprint className="w-5 h-5" /> {attemptingBio ? 'Scanning...' : 'Biometrics'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

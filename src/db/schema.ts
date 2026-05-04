@@ -13,6 +13,7 @@ export const leads = pgTable("leads", {
   message: text("message"),
   magicKey: uuid("magic_key").defaultRandom().unique(),
   passcode: text("passcode"),
+  biometricsEnabled: boolean("biometrics_enabled").default(false),
   autoLockTime: text("auto_lock_time").default("0"), // "0" = immediately, "5" = 5 mins, etc.
   isBlocked: boolean("is_blocked").default(false).notNull(),
   pushSubscription: jsonb("push_subscription"),

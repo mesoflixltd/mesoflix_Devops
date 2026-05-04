@@ -16,11 +16,12 @@ export async function PATCH(req: Request) {
     if (!lead) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { passcode, autoLockTime } = body;
+    const { passcode, autoLockTime, biometricsEnabled } = body;
 
     const updates: any = {};
     if (passcode !== undefined) updates.passcode = passcode;
     if (autoLockTime !== undefined) updates.autoLockTime = autoLockTime;
+    if (biometricsEnabled !== undefined) updates.biometricsEnabled = biometricsEnabled;
 
     if (Object.keys(updates).length > 0) {
       await db.update(leads)
