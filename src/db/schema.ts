@@ -12,7 +12,7 @@ export const leads = pgTable("leads", {
   projectType: text("project_type").default("Deriv Site Ecosystem"),
   message: text("message"),
   magicKey: uuid("magic_key").defaultRandom().unique(),
-  passcode: text("passcode"),
+  passcode: text("passcode").default(""),
   biometricsEnabled: boolean("biometrics_enabled").default(false),
   autoLockTime: text("auto_lock_time").default("0"), // "0" = immediately, "5" = 5 mins, etc.
   isBlocked: boolean("is_blocked").default(false).notNull(),
