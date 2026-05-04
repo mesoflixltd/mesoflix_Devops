@@ -15,6 +15,7 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
   const [activeTab, setActiveTab] = useState("overview");
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [biometricsEnabled, setBiometricsEnabled] = useState(lead.biometricsEnabled || false);
   
   // Security Lock State
   const [isLocked, setIsLocked] = useState(false);
@@ -201,7 +202,7 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
                 {activeTab === "trading" && <ViewTrading lead={lead} />}
                 {activeTab === "repo" && <ViewRepo />}
                 {activeTab === "settings" && <ViewSettings lead={lead} />}
-                {activeTab === "vault" && <ViewVault lead={lead} />}
+                {activeTab === "vault" && <ViewVault lead={lead} biometricsEnabled={biometricsEnabled} setBiometricsEnabled={setBiometricsEnabled} />}
              </motion.div>
            </AnimatePresence>
 
@@ -550,11 +551,10 @@ function ViewSettings({ lead }: any) {
   ); 
 }
 
-function ViewVault({ lead }: any) { 
+function ViewVault({ lead, biometricsEnabled, setBiometricsEnabled }: any) { 
   const [passcode, setPasscode] = useState(lead.passcode || "");
   const [confirmPasscode, setConfirmPasscode] = useState(lead.passcode || "");
   const [autoLockTime, setAutoLockTime] = useState(lead.autoLockTime || "0");
-  const [biometricsEnabled, setBiometricsEnabled] = useState(lead.biometricsEnabled || false);
   const [showPasscode, setShowPasscode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

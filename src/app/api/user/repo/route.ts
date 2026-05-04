@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     const path = url.searchParams.get("path") || "";
     validatePath(path);
 
-    const res = await fetch(`https://api.github.com/repos/${project.githubRepo}/contents/${path}`, {
+    const res = await fetch(`https://api.github.com/repos/${project.githubRepo}/contents/${path}?ref=master`, {
       headers: {
         "Authorization": `Bearer ${githubToken}`,
         "Accept": "application/vnd.github.v3+json"
@@ -74,7 +74,8 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         message: message || "Update bot via MesoFlix User Console",
         content: content,
-        sha: sha
+        sha: sha,
+        branch: "master"
       })
     });
 
@@ -103,7 +104,8 @@ export async function DELETE(req: Request) {
       },
       body: JSON.stringify({
         message: `Delete ${path} via MesoFlix User Console`,
-        sha: sha
+        sha: sha,
+        branch: "master"
       })
     });
 
