@@ -573,7 +573,11 @@ function ViewVault({ lead, biometricsEnabled, setBiometricsEnabled }: any) {
              rp: { name: "Mesoflix Institutional Console", id: window.location.hostname },
              user: { id: challenge, name: lead.name || "user", displayName: lead.name || "User" },
              pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
-             authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+             authenticatorSelection: { 
+               authenticatorAttachment: "platform", 
+               userVerification: "required",
+               residentKey: "required"
+             },
              timeout: 60000,
              attestation: "none"
            }
