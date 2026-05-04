@@ -635,7 +635,33 @@ function ViewVault({ lead }: any) {
              </div>
              
              {/* Biometrics Toggle UI */}
-             <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 w-full cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setBiometricsEnabled(!biometricsEnabled)}>
+             <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 w-full cursor-pointer hover:bg-white/10 transition-colors" 
+                  onClick={async () => {
+                    if (!biometricsEnabled) {
+                       try {
+                         if (!window.PublicKeyCredential) throw new Error("Biometrics not supported on this browser.");
+                         const challenge = new Uint8Array(32);
+                         window.crypto.getRandomValues(challenge);
+                         const cred = await navigator.credentials.create({
+                           publicKey: {
+                             challenge,
+                             rp: { name: "Mesoflix Institutional Console", id: window.location.hostname },
+                             user: { id: challenge, name: lead.name || "user", displayName: lead.name || "User" },
+                             pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
+                             authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+                             timeout: 60000,
+                             attestation: "none"
+                           }
+                         });
+                         if (cred) setBiometricsEnabled(true);
+                       } catch(e) {
+                         console.error(e);
+                         alert("Biometric verification failed or was cancelled.");
+                       }
+                    } else {
+                       setBiometricsEnabled(false);
+                    }
+                  }}>
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${biometricsEnabled ? 'bg-red-500/20 text-red-500' : 'bg-black/50 text-white/20'}`}>
                    <Fingerprint className="w-6 h-6" />
                 </div>
@@ -705,11 +731,20 @@ function LockScreen({ lead, onUnlock }: any) {
   const tryBiometrics = async () => {
     setAttemptingBio(true);
     try {
-      // Simulate biometric scan (e.g. Face ID / Touch ID UI popup flow)
-      setTimeout(() => {
-        onUnlock();
-      }, 1500);
+      if (!window.PublicKeyCredential) throw new Error("Not supported");
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const cred = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          rpId: window.location.hostname,
+          userVerification: "required",
+          timeout: 60000
+        }
+      });
+      if (cred) onUnlock();
     } catch(e) {
+      console.error(e);
       setError("Biometrics failed. Use passcode.");
     } finally {
       setAttemptingBio(false);
@@ -720,41 +755,43 @@ function LockScreen({ lead, onUnlock }: any) {
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black overflow-hidden font-inter">
       <div 
         className="absolute inset-0 z-0 opacity-40 bg-cover bg-center" 
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1614064641936-a59266472434?q=80&w=2070&auto=format&fit=crop')" }} 
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop')" }} 
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/90 to-black/50 z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-red-950/80 via-[#020617]/90 to-black/80 z-10" />
 
-      <div className="relative z-20 w-full max-w-sm p-8 rounded-[3rem] bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col items-center">
-        <div className="w-20 h-20 rounded-[2rem] bg-white/5 border border-white/10 flex items-center justify-center mb-6 shadow-inner backdrop-blur-sm">
-           <ShieldCheck className="w-10 h-10 text-white" />
+      <div className="relative z-20 w-[90%] max-w-sm p-6 sm:p-8 rounded-[3rem] bg-black/50 backdrop-blur-xl border border-red-500/20 shadow-[0_0_80px_rgba(239,68,68,0.15)] flex flex-col items-center">
+        <div className="w-20 h-20 rounded-[2rem] bg-red-600/10 border border-red-500/30 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(239,68,68,0.2)] backdrop-blur-sm">
+           <ShieldCheck className="w-10 h-10 text-red-500" />
         </div>
         <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">Vault Locked</h2>
         <p className="text-xs text-white/50 font-bold uppercase tracking-widest text-center mb-8">Node {lead.name} Requires Auth</p>
 
         <div className="w-full space-y-6">
-          <div className="flex justify-center gap-2 mb-2 relative">
-             {Array.from({ length: 6 }).map((_, i) => (
-               <input 
-                 key={i}
-                 type={showPasscode ? "text" : "password"}
-                 maxLength={1}
-                 value={passcodeInput[i] || ""}
-                 onChange={(e) => {
-                    const char = e.target.value.replace(/[^0-9]/g, '');
-                    let newVal = passcodeInput.split('');
-                    newVal[i] = char;
-                    const result = newVal.join('').substring(0, 6);
-                    setPasscodeInput(result);
-                    if (char && i < 5) {
-                      document.getElementById(`lock-otp-${i+1}`)?.focus();
-                    }
-                 }}
-                 id={`lock-otp-${i}`}
-                 className="w-10 h-12 md:w-12 md:h-14 bg-white/5 border border-white/10 rounded-xl text-center text-xl font-black text-white focus:outline-none focus:border-white transition-colors"
-               />
-             ))}
-             <button onClick={() => setShowPasscode(!showPasscode)} className="absolute -right-8 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors">
-                {showPasscode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          <div className="flex flex-col items-center gap-4 mb-2">
+             <div className="flex justify-center gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <input 
+                    key={i}
+                    type={showPasscode ? "text" : "password"}
+                    maxLength={1}
+                    value={passcodeInput[i] || ""}
+                    onChange={(e) => {
+                       const char = e.target.value.replace(/[^0-9]/g, '');
+                       let newVal = passcodeInput.split('');
+                       newVal[i] = char;
+                       const result = newVal.join('').substring(0, 6);
+                       setPasscodeInput(result);
+                       if (char && i < 5) {
+                         document.getElementById(`lock-otp-${i+1}`)?.focus();
+                       }
+                    }}
+                    id={`lock-otp-${i}`}
+                    className="w-10 h-12 sm:w-12 sm:h-14 bg-red-950/20 border border-red-500/20 rounded-xl text-center text-xl font-black text-red-100 focus:outline-none focus:border-red-500 focus:bg-red-950/40 transition-colors"
+                  />
+                ))}
+             </div>
+             <button onClick={() => setShowPasscode(!showPasscode)} className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest mt-2">
+                {showPasscode ? <><EyeOff className="w-4 h-4" /> Hide Passcode</> : <><Eye className="w-4 h-4" /> Show Passcode</>}
              </button>
           </div>
           {error && <p className="text-red-500 text-xs font-bold text-center italic">{error}</p>}
