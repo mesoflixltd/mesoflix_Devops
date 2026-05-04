@@ -634,11 +634,11 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                                 <select 
                                    value={localStatuses.githubRepo} 
                                    onChange={(e) => setLocalStatuses({...localStatuses, githubRepo: e.target.value})}
-                                   className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3 px-4 text-xs font-bold text-white focus:outline-none focus:border-red-500/50 appearance-none"
+                                   className="w-full bg-[#020617] border border-white/10 rounded-2xl py-3 px-4 text-xs font-bold text-white focus:outline-none focus:border-red-500/50 appearance-none"
                                 >
-                                   <option value="">No repository assigned</option>
+                                   <option value="" className="bg-[#020617] text-white">No repository assigned</option>
                                    {repos.map((r: any) => (
-                                      <option key={r.id} value={r.fullName}>{r.fullName}</option>
+                                      <option key={r.id} value={r.fullName} className="bg-[#020617] text-white">{r.fullName}</option>
                                    ))}
                                 </select>
                                 
