@@ -25,18 +25,31 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     return <UnauthorizedView />;
   }
 
-  // 3. Database Identity Verification
-  const [lead] = await db.select().from(leads).where(eq(leads.magicKey, sessionToken)).limit(1);
+  try {
+    // 3. Database Identity Verification
+    const [lead] = await db.select().from(leads).where(eq(leads.magicKey, sessionToken)).limit(1);
 
-  if (!lead) {
-    return <UnauthorizedView />;
+    if (!lead) {
+      return <UnauthorizedView />;
+    }
+
+    // Fetch contextual Project ecosystem details
+    const [project] = await db.select().from(projects).where(eq(projects.leadId, lead.id)).limit(1);
+
+    // 4. Pass validated identity layer and project context to the interactive client UI
+    return <DashboardUI lead={lead} project={project || null} />;
+  } catch (error) {
+    console.error("Database connection error during SSR:", error);
+    return (
+      <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <ShieldAlert className="w-12 h-12 text-red-500 animate-pulse" />
+        <h1 className="text-2xl font-black uppercase text-red-500">Database Connection Failed</h1>
+        <p className="text-sm text-white/50 max-w-md">
+          The dashboard could not connect to the database. If you just deployed to Netlify, make sure you have added the <span className="text-white font-bold bg-white/10 px-2 py-1 rounded">DATABASE_URL</span> environment variable in your Netlify site settings.
+        </p>
+      </div>
+    );
   }
-
-  // Fetch contextual Project ecosystem details
-  const [project] = await db.select().from(projects).where(eq(projects.leadId, lead.id)).limit(1);
-
-  // 4. Pass validated identity layer and project context to the interactive client UI
-  return <DashboardUI lead={lead} project={project || null} />;
 }
 
 function UnauthorizedView() {
