@@ -565,18 +565,20 @@ function ViewVault({ lead, biometricsEnabled, setBiometricsEnabled }: any) {
     if (newState) {
        try {
          if (!window.PublicKeyCredential) throw new Error("Biometrics not supported on this browser.");
+         const userId = new Uint8Array(new Int32Array([lead.id || 0]).buffer);
          const challenge = new Uint8Array(32);
          window.crypto.getRandomValues(challenge);
          const cred = await navigator.credentials.create({
            publicKey: {
              challenge,
              rp: { name: "Mesoflix Institutional Console", id: window.location.hostname },
-             user: { id: challenge, name: lead.name || "user", displayName: lead.name || "User" },
+             user: { id: userId, name: lead.name || "user", displayName: lead.name || "User" },
              pubKeyCredParams: [{alg: -7, type: "public-key"}, {alg: -257, type: "public-key"}],
              authenticatorSelection: { 
                authenticatorAttachment: "platform", 
-               userVerification: "required",
-               residentKey: "required"
+               userVerification: "preferred",
+               residentKey: "required",
+               requireResidentKey: true
              },
              timeout: 60000,
              attestation: "none"
@@ -758,9 +760,10 @@ function LockScreen({ lead, onUnlock }: any) {
         publicKey: {
           challenge,
           rpId: window.location.hostname,
-          userVerification: "required",
+          userVerification: "preferred",
           timeout: 60000
-        }
+        },
+        mediation: 'optional'
       });
       if (cred) onUnlock();
     } catch(e) {
