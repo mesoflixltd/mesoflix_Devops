@@ -7,7 +7,8 @@ import {
   Globe, Terminal, LayoutDashboard, Bell, LogOut, Code2,
   Menu, X, MessageSquare, Zap, ArrowRight, Copy, Check,
   ExternalLink, Shield, Clock as ClockIcon, ChevronRight,
-  User, Search, Cpu, Mail, Megaphone, AlertCircle, Info
+  User, Search, Cpu, Mail, Megaphone, AlertCircle, Info,
+  Bot, UploadCloud, Trash2, Edit3, PlusCircle
 } from "lucide-react";
 
 export default function DashboardUI({ lead, project }: { lead: any, project: any }) {
@@ -112,6 +113,7 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
                 {activeTab === "status" && <ViewStatus project={project} steps={PROGRESS_STEPS} />}
                 {activeTab === "domain" && <ViewDomain lead={lead} project={project} />}
                 {activeTab === "trading" && <ViewTrading lead={lead} />}
+                {activeTab === "repo" && <ViewRepo />}
                 {activeTab === "settings" && <ViewSettings lead={lead} />}
                 {activeTab === "vault" && <ViewVault lead={lead} />}
              </motion.div>
@@ -213,6 +215,7 @@ function SidebarNav({ activeTab, switchTab }: any) {
     { id: "status", label: "Project Status", icon: <Activity className="w-4 h-4" /> },
     { id: "domain", label: "Domain Setup", icon: <Globe className="w-4 h-4" /> },
     { id: "trading", label: "Trading Setup", icon: <Code2 className="w-4 h-4" /> },
+    { id: "repo", label: "Bots Repository", icon: <Database className="w-4 h-4" /> },
     { id: "settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
     { id: "vault", label: "Security Vault", icon: <ShieldCheck className="w-4 h-4" /> },
   ];
@@ -318,3 +321,244 @@ function ViewStatus({ steps }: any) { return <div className="p-10 text-center te
 function ViewTrading({ lead }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">API Handshake terminal active...</div>; }
 function ViewSettings({ lead }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">Identity credentials encrypted...</div>; }
 function ViewVault({ }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">Security Vault locked...</div>; }
+
+function ViewRepo() {
+  const [bots, setBots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingBot, setEditingBot] = useState<any>(null);
+  
+  // Form state
+  const [file, setFile] = useState<File | null>(null);
+  const [formData, setFormData] = useState({
+    id: "",
+    name: "",
+    description: "",
+    category: "Trading Strategy",
+    icon: "chart",
+    status: "Stable",
+    accuracy: 80,
+    isPremium: false
+  });
+
+  useEffect(() => {
+    fetchBots();
+  }, []);
+
+  const fetchBots = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/bots");
+      const data = await res.json();
+      if (data.bots) setBots(data.bots);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this bot?")) return;
+    try {
+      await fetch(`/api/admin/bots?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      setBots(bots.filter(b => b.id !== id));
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
+  };
+
+  const handleEdit = (bot: any) => {
+    setEditingBot(bot);
+    setFormData(bot);
+    setFile(null);
+    setIsFormOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingBot(null);
+    setFormData({
+      id: "bot-" + Date.now(),
+      name: "",
+      description: "",
+      category: "Trading Strategy",
+      icon: "chart",
+      status: "Stable",
+      accuracy: 80,
+      isPremium: true
+    });
+    setFile(null);
+    setIsFormOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingBot) {
+      // Update
+      try {
+        const res = await fetch("/api/admin/bots", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editingBot.id, updatedData: formData })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setBots(bots.map(b => b.id === editingBot.id ? data.bot : b));
+          setIsFormOpen(false);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      // Create
+      if (!file) {
+        alert("Please select an XML file to upload.");
+        return;
+      }
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        // ensure name matches filename if possible, or use provided
+        const finalBotData = { ...formData, name: formData.name || file.name };
+        fd.append("botData", JSON.stringify(finalBotData));
+
+        const res = await fetch("/api/admin/bots", {
+          method: "POST",
+          body: fd
+        });
+        const data = await res.json();
+        if (data.success) {
+          setBots([data.bot, ...bots]);
+          setIsFormOpen(false);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white uppercase italic">Bots Repository</h1>
+          <p className="text-white/40 font-bold text-sm tracking-wide italic mt-2">Manage strategies deployed to Mesoflix Bot platform.</p>
+        </div>
+        <button onClick={handleAddNew} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center gap-2">
+          <PlusCircle className="w-4 h-4" /> Upload Bot
+        </button>
+      </div>
+
+      {isFormOpen && (
+        <div className="p-8 rounded-[2.5rem] bg-[#020617] border border-red-500/30 shadow-2xl relative overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-black uppercase italic text-white">{editingBot ? "Edit Strategy" : "Upload New Strategy"}</h2>
+            <button onClick={() => setIsFormOpen(false)} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {!editingBot && (
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">XML Bot File</label>
+                  <input type="file" accept=".xml" onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setFile(f);
+                      if (!formData.name) setFormData({...formData, name: f.name});
+                    }
+                  }} className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-red-500/20 file:text-red-500 hover:file:bg-red-500/30 transition-all cursor-pointer" required />
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Filename</label>
+                <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Display Name (ID)</label>
+                <input type="text" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required disabled={!!editingBot} />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Description</label>
+                <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors h-24 resize-none" required />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Category</label>
+                <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Status</label>
+                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors">
+                  <option value="Stable">Stable</option>
+                  <option value="Trending">Trending</option>
+                  <option value="Beta">Beta</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Accuracy (%)</label>
+                <input type="number" min="0" max="100" value={formData.accuracy} onChange={e => setFormData({...formData, accuracy: parseInt(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required />
+              </div>
+
+              <div className="flex items-center gap-3 pt-6">
+                <input type="checkbox" id="isPremium" checked={formData.isPremium} onChange={e => setFormData({...formData, isPremium: e.target.checked})} className="w-4 h-4 accent-red-500 rounded cursor-pointer" />
+                <label htmlFor="isPremium" className="text-[10px] font-black uppercase tracking-widest text-white/80 cursor-pointer">Premium Strategy</label>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex justify-end gap-4">
+              <button type="button" onClick={() => setIsFormOpen(false)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors">Cancel</button>
+              <button type="submit" className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center gap-2">
+                <UploadCloud className="w-4 h-4" /> {editingBot ? "Save Changes" : "Upload to Server"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-white/20 font-black uppercase italic tracking-widest">Scanning Repository...</div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {bots.map(bot => (
+            <div key={bot.id} className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all flex flex-col group relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-red-500/5 blur-3xl rounded-full group-hover:bg-red-500/10 transition-colors" />
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center">
+                    <Bot className="w-6 h-6 text-white/70" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-lg leading-tight">{bot.id}</h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mt-1">{bot.name}</p>
+                  </div>
+                </div>
+                {bot.isPremium && <span className="px-2 py-1 bg-amber-500/20 text-amber-500 rounded border border-amber-500/30 text-[9px] font-black uppercase tracking-widest">Premium</span>}
+              </div>
+              <p className="text-sm text-white/60 mb-6 flex-1 relative z-10 line-clamp-2">{bot.description}</p>
+              
+              <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5 relative z-10">
+                <div className="flex gap-4">
+                  <div className="flex flex-col gap-1"><span className="text-[9px] font-black uppercase tracking-widest text-white/30">Accuracy</span><span className="text-white font-bold text-sm">{bot.accuracy}%</span></div>
+                  <div className="flex flex-col gap-1"><span className="text-[9px] font-black uppercase tracking-widest text-white/30">Status</span><span className="text-white font-bold text-sm">{bot.status}</span></div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handleEdit(bot)} className="p-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-lg transition-colors" title="Edit Metadata">
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDelete(bot.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors" title="Delete Strategy">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
