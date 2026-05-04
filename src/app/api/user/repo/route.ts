@@ -23,11 +23,19 @@ async function authenticateAndGetRepoContext() {
   return { lead, project, githubToken: admin.githubToken };
 }
 
+function validatePath(path: string) {
+  if (path.includes("..")) throw new Error("Security Error: Path traversal detected");
+  if (path !== "public/bots" && !path.startsWith("public/bots/")) {
+    throw new Error("Security Error: Access restricted exclusively to public/bots directory");
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const { project, githubToken } = await authenticateAndGetRepoContext();
     const url = new URL(req.url);
     const path = url.searchParams.get("path") || "public/bots";
+    validatePath(path);
 
     const res = await fetch(`https://api.github.com/repos/${project.githubRepo}/contents/${path}`, {
       headers: {
@@ -53,6 +61,8 @@ export async function POST(req: Request) {
     const { project, githubToken } = await authenticateAndGetRepoContext();
     const body = await req.json();
     const { path, content, message, sha } = body;
+    if (!path) throw new Error("Missing path");
+    validatePath(path);
 
     const res = await fetch(`https://api.github.com/repos/${project.githubRepo}/contents/${path}`, {
       method: "PUT",
@@ -82,6 +92,7 @@ export async function DELETE(req: Request) {
     const sha = url.searchParams.get("sha");
 
     if (!path || !sha) throw new Error("Missing path or sha");
+    validatePath(path);
 
     const res = await fetch(`https://api.github.com/repos/${project.githubRepo}/contents/${path}`, {
       method: "DELETE",
