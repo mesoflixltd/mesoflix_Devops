@@ -25,8 +25,9 @@ async function authenticateAndGetRepoContext() {
 
 function validatePath(path: string) {
   if (path.includes("..")) throw new Error("Security Error: Path traversal detected");
-  if (path !== "public/bots" && !path.startsWith("public/bots/")) {
-    throw new Error("Security Error: Access restricted exclusively to public/bots directory");
+  // Allow root path or specific public/bots paths
+  if (path !== "" && path !== "/" && path !== "public/bots" && !path.startsWith("public/bots/") && !path.startsWith("bots/")) {
+    throw new Error("Security Error: Access restricted exclusively to root or bots directory");
   }
 }
 
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
   try {
     const { project, githubToken } = await authenticateAndGetRepoContext();
     const url = new URL(req.url);
-    const path = url.searchParams.get("path") || "public/bots";
+    const path = url.searchParams.get("path") || "";
     validatePath(path);
 
     const res = await fetch(`https://api.github.com/repos/${project.githubRepo}/contents/${path}`, {
