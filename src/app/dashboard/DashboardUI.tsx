@@ -720,7 +720,7 @@ function ViewRepo() {
   const fetchBots = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/user/repo?path=");
+      const res = await fetch("/api/user/repo?path=public/bots");
       const data = await res.json();
       if (data.files && Array.isArray(data.files)) {
         // Filter out non-XML files just in case
@@ -766,7 +766,7 @@ function ViewRepo() {
     if (!newBotName.trim() || !newBotContent.trim()) return;
     setSaving(true);
     try {
-      const path = fileToEdit.isNew ? newBotName : fileToEdit.path;
+      const path = fileToEdit.isNew ? `public/bots/${newBotName}` : fileToEdit.path;
       const b64 = Buffer.from(newBotContent).toString('base64');
       const res = await fetch("/api/user/repo", {
         method: "POST",
