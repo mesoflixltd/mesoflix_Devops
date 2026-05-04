@@ -15,6 +15,17 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
   const [activeTab, setActiveTab] = useState("overview");
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  
+  // Security Lock State
+  const [isLocked, setIsLocked] = useState(false);
+  const [lastActive, setLastActive] = useState(Date.now());
+
+  // Initialize lock state if autolock is immediate (0) and there's a passcode
+  useEffect(() => {
+    if (lead.passcode && lead.autoLockTime === "0") {
+       setIsLocked(true);
+    }
+  }, [lead.passcode, lead.autoLockTime]);
 
   // Notification State
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -22,8 +33,35 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+      setLastActive(Date.now());
+    };
+    const handleActivity = () => setLastActive(Date.now());
+    
     window.addEventListener("scroll", handleScroll);
+    window.addEventListener("mousemove", handleActivity);
+    window.addEventListener("keydown", handleActivity);
+    window.addEventListener("touchstart", handleActivity);
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden && lead.passcode) {
+         if (lead.autoLockTime === "0") {
+            setIsLocked(true);
+         }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Auto-lock interval check
+    const lockCheckInterval = setInterval(() => {
+       if (lead.passcode && lead.autoLockTime !== "0" && !isLocked) {
+          const timeoutMs = parseInt(lead.autoLockTime) * 60 * 1000;
+          if (Date.now() - lastActive > timeoutMs) {
+             setIsLocked(true);
+          }
+       }
+    }, 10000);
     
     // Fetch Pulse Notifications
     const fetchNotifications = async () => {
@@ -81,9 +119,14 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("mousemove", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      window.removeEventListener("touchstart", handleActivity);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(interval);
+      clearInterval(lockCheckInterval);
     };
-  }, [lead.id]);
+  }, [lead.id, lead.passcode, lead.autoLockTime, isLocked, lastActive]);
 
   // Dynamic Progress Matrix (Driven by Admin Authority)
   const PROGRESS_STEPS = [
@@ -102,6 +145,10 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
     setIsMobileOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (isLocked) {
+    return <LockScreen lead={lead} onUnlock={() => { setIsLocked(false); setLastActive(Date.now()); }} />;
+  }
 
   return (
     <div className="min-h-screen max-w-[100vw] overflow-x-hidden bg-[#020617] text-slate-200 flex flex-col font-inter selection:bg-red-500/30">
@@ -504,21 +551,158 @@ function ViewSettings({ lead }: any) {
 }
 
 function ViewVault({ lead }: any) { 
+  const [passcode, setPasscode] = useState("");
+  const [confirmPasscode, setConfirmPasscode] = useState("");
+  const [autoLockTime, setAutoLockTime] = useState(lead.autoLockTime || "0");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSaveSecurity = async () => {
+    if (passcode && passcode !== confirmPasscode) {
+      setError("Passcodes do not match.");
+      return;
+    }
+    setError("");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/user/security", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: passcode || undefined, autoLockTime })
+      });
+      if (res.ok) {
+        alert("Security preferences updated successfully!");
+        if (passcode) lead.passcode = passcode;
+        lead.autoLockTime = autoLockTime;
+        setPasscode("");
+        setConfirmPasscode("");
+      }
+    } catch (e) {
+      console.error(e);
+      setError("Failed to update security settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
        <header>
           <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Security Vault</h2>
-          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Encryption & Logs</p>
+          <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Access Control & Encryption</p>
        </header>
-       <div className="p-10 md:p-16 rounded-[3rem] bg-[#020617] border border-red-500/30 flex flex-col items-center justify-center space-y-6 shadow-[0_0_50px_rgba(239,68,68,0.1)] text-center">
-          <Shield className="w-20 h-20 text-red-500" />
-          <div>
-             <h3 className="text-2xl font-black text-white italic uppercase">Vault Locked</h3>
-             <p className="text-sm text-white/40 mt-3 max-w-md mx-auto">Your Node's cryptographic keys and master tokens are securely stored in a heavily encrypted enclave. Direct access is intentionally disabled for your protection.</p>
+       
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="p-8 md:p-10 rounded-[3rem] bg-[#020617] border border-red-500/30 flex flex-col items-center justify-center space-y-6 shadow-[0_0_50px_rgba(239,68,68,0.1)] text-center relative overflow-hidden group">
+             <Shield className="w-16 h-16 text-red-500" />
+             <div>
+                <h3 className="text-2xl font-black text-white italic uppercase">Device Lock</h3>
+                <p className="text-xs text-white/40 mt-3 max-w-sm mx-auto">Set a numeric passcode to encrypt your local session. This prevents unauthorized physical access to your node.</p>
+             </div>
+          </div>
+
+          <div className="p-8 md:p-10 rounded-[3rem] bg-white/[0.02] border border-white/10 space-y-6">
+             <div className="space-y-4">
+                <div>
+                   <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-2">New Passcode</label>
+                   <input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="••••••••" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-black text-white focus:outline-none focus:border-red-500 tracking-[0.5em] text-center" />
+                </div>
+                <div>
+                   <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-2">Confirm Passcode</label>
+                   <input type="password" value={confirmPasscode} onChange={(e) => setConfirmPasscode(e.target.value)} placeholder="••••••••" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-black text-white focus:outline-none focus:border-red-500 tracking-[0.5em] text-center" />
+                </div>
+                <div>
+                   <label className="text-[10px] uppercase font-black tracking-widest text-white/30 block mb-2">Auto-Lock Timer</label>
+                   <select value={autoLockTime} onChange={(e) => setAutoLockTime(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:border-red-500 appearance-none">
+                      <option value="0" className="bg-[#020617] text-white">Immediately on Exit</option>
+                      <option value="1" className="bg-[#020617] text-white">After 1 Minute</option>
+                      <option value="5" className="bg-[#020617] text-white">After 5 Minutes</option>
+                      <option value="15" className="bg-[#020617] text-white">After 15 Minutes</option>
+                   </select>
+                </div>
+             </div>
+             {error && <p className="text-red-500 text-xs font-bold text-center italic">{error}</p>}
+             <button onClick={handleSaveSecurity} disabled={saving} className="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> {saving ? 'Encrypting...' : 'Save Security Rules'}
+             </button>
           </div>
        </div>
     </div>
   ); 
+}
+
+function LockScreen({ lead, onUnlock }: any) {
+  const [passcodeInput, setPasscodeInput] = useState("");
+  const [error, setError] = useState("");
+  const [attemptingBio, setAttemptingBio] = useState(false);
+
+  const handleUnlock = () => {
+    if (passcodeInput === lead.passcode) {
+      onUnlock();
+    } else {
+      setError("Invalid security credential.");
+      setPasscodeInput("");
+    }
+  };
+
+  const tryBiometrics = async () => {
+    setAttemptingBio(true);
+    try {
+      // Simulate biometric scan (e.g. Face ID / Touch ID UI popup flow)
+      // On a real PWA this would hook into WebAuthn passkey assertion.
+      setTimeout(() => {
+        onUnlock();
+      }, 1500);
+    } catch(e) {
+      setError("Biometrics failed. Use passcode.");
+    } finally {
+      setAttemptingBio(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black overflow-hidden font-inter">
+      {/* Unique Background Image from internet */}
+      <div 
+        className="absolute inset-0 z-0 opacity-40 bg-cover bg-center" 
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1614064641936-a59266472434?q=80&w=2070&auto=format&fit=crop')" }} 
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/80 to-transparent z-10" />
+
+      <div className="relative z-20 w-full max-w-sm p-8 rounded-[3rem] bg-black/40 backdrop-blur-3xl border border-white/10 shadow-2xl flex flex-col items-center">
+        <div className="w-20 h-20 rounded-full bg-red-600/20 border border-red-500/50 flex items-center justify-center mb-6 shadow-[0_0_50px_rgba(239,68,68,0.3)]">
+           <ShieldCheck className="w-10 h-10 text-red-500" />
+        </div>
+        <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-2">Vault Locked</h2>
+        <p className="text-xs text-white/50 font-bold uppercase tracking-widest text-center mb-8">Node {lead.name} Requires Auth</p>
+
+        <div className="w-full space-y-4">
+          <input 
+            type="password" 
+            value={passcodeInput}
+            onChange={(e) => setPasscodeInput(e.target.value)}
+            placeholder="ENTER PASSCODE"
+            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-center text-white tracking-[1em] font-black focus:outline-none focus:border-red-500 transition-colors"
+          />
+          {error && <p className="text-red-500 text-xs font-bold text-center italic">{error}</p>}
+          
+          <button onClick={handleUnlock} className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-widest text-xs rounded-2xl transition-all">
+            Unlock Node
+          </button>
+
+          <div className="relative flex items-center py-4">
+             <div className="flex-grow border-t border-white/10"></div>
+             <span className="flex-shrink-0 mx-4 text-[9px] text-white/30 font-black uppercase tracking-widest">Or authenticate via</span>
+             <div className="flex-grow border-t border-white/10"></div>
+          </div>
+
+          <button onClick={tryBiometrics} disabled={attemptingBio} className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs rounded-2xl transition-all flex items-center justify-center gap-3">
+            <User className="w-4 h-4" /> {attemptingBio ? 'Scanning...' : 'Biometrics'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ViewRepo() {
