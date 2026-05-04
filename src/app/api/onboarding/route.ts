@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { leads, projects } from "@/db/schema";
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { sendWelcomeEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +16,19 @@ export async function POST(req: Request) {
     }
 
     // 1. Prevent Duplication Spam
-    const existing = await db.select().from(leads).where(eq(leads.email, email)).limit(1);
+    const existing = await db.select().from(leads).where(
+      or(
+        eq(leads.email, email),
+        eq(leads.whatsapp, whatsapp),
+        eq(leads.clientId, clientId)
+      )
+    ).limit(1);
+    
     if (existing.length > 0) {
-      return NextResponse.json({ error: "DUPLICATE: This email or profile is already registered." }, { status: 409 });
+      if (existing[0].isBlocked) {
+        return NextResponse.json({ error: "AUTHORITY BAN: You are permanently blocked from creating profiles." }, { status: 403 });
+      }
+      return NextResponse.json({ error: "DUPLICATE: A profile with this email, phone, or Client ID already exists." }, { status: 409 });
     }
 
     const [newLead] = await db.insert(leads).values({

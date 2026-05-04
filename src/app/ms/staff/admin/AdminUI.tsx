@@ -51,6 +51,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
   // Derive active project for selected lead
   const activeProject = selectedLead ? projects.find(p => p.leadId === selectedLead.id) : null;
   const [localStatuses, setLocalStatuses] = useState<any>(null);
+  const [localLeadIsBlocked, setLocalLeadIsBlocked] = useState<boolean>(false);
 
   useEffect(() => {
     if (isTokenSaved) handleFetchRepos();
@@ -86,6 +87,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
         githubRepo: p.githubRepo || ''
       });
     }
+    setLocalLeadIsBlocked(lead.isBlocked || false);
   };
 
   const handleSaveLifecycle = async () => {
@@ -159,7 +161,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
         sha: file.sha 
       } : {
         repo: selectedRepo.fullName,
-        path: file.path, // Use original path for edits
+        path: file.isNew ? (currentPath ? `${currentPath}/${newBotName}` : newBotName) : file.path, // Use original path for edits
         content: newBotContent,
         sha: file.sha
       };
@@ -516,7 +518,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                                handleOpenRepo(selectedRepo, parts.join('/'));
                             }} className="px-6 py-3 border border-white/10 text-white/30 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-white transition-all italic flex items-center gap-2">Parent Dir</button>
                          )}
-                         <button className="px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-emerald-900/40 transform active:scale-95 transition-all"><Upload className="w-4 h-4" /> Upload Bot</button>
+                         <button onClick={() => { setFileToEdit({ path: '', isNew: true }); setNewBotName('strategy.xml'); setNewBotContent(''); }} className="px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-emerald-900/40 transform active:scale-95 transition-all"><Upload className="w-4 h-4" /> Upload Bot</button>
                       </div>
                    </header>
 
@@ -665,7 +667,7 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                           </div>
                        )}
                     </section>
-                    ) : activeSidebarTab === "portfolio" ? (
+                     ) : activeSidebarTab === "portfolio" ? (
                       <section className="space-y-10">
                          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
                             <PortfolioField icon={<User className="w-3" />} label="Node Identity" value={selectedLead.name} />
@@ -676,6 +678,40 @@ export default function AdminUI({ admin, leads: initialLeads, projects: initialP
                             <PortfolioField icon={<Activity className="w-3" />} label="Service Tier" value={selectedLead.projectType} />
                             <PortfolioField icon={<Globe className="w-3" />} label="Base Domain" value={selectedLead.domainName} />
                             <PortfolioField icon={<Database className="w-3" />} label="DNS Registrar" value={selectedLead.domainProvider} />
+                            
+                            <div className="pt-4 border-t border-white/5 mt-4">
+                               <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/10">
+                                  <div className="flex items-center gap-3">
+                                     <div className={`p-2 rounded-xl ${localLeadIsBlocked ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                                        <ShieldCheck className="w-4 h-4" />
+                                     </div>
+                                     <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-white italic">Node Authority Status</p>
+                                        <p className="text-[9px] font-bold text-white/40">{localLeadIsBlocked ? 'Access Revoked' : 'Access Granted'}</p>
+                                     </div>
+                                  </div>
+                                  <button onClick={async () => {
+                                     const newStatus = !localLeadIsBlocked;
+                                     setSaving(true);
+                                     try {
+                                        const res = await fetch(`/api/admin/leads/${selectedLead.id}`, {
+                                           method: 'PATCH',
+                                           headers: { 'Content-Type': 'application/json' },
+                                           body: JSON.stringify({ isBlocked: newStatus })
+                                        });
+                                        if (res.ok) {
+                                           setLocalLeadIsBlocked(newStatus);
+                                           // Update local state to reflect across library
+                                           const updatedLeads = initialLeads.map(l => l.id === selectedLead.id ? { ...l, isBlocked: newStatus } : l);
+                                           // In a real app we'd dispatch this up or re-fetch, but for now we just mutate selectedLead
+                                           selectedLead.isBlocked = newStatus;
+                                        }
+                                     } catch (e) {} finally { setSaving(false); }
+                                  }} disabled={saving} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${localLeadIsBlocked ? 'bg-emerald-500 hover:bg-emerald-400 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}>
+                                     {saving ? 'Processing...' : localLeadIsBlocked ? 'Restore Access' : 'Revoke Access'}
+                                  </button>
+                               </div>
+                            </div>
                          </div>
                       </section>
                     ) : activeSidebarTab === "transmit" ? (

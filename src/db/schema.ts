@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
 
 export const leads = pgTable("leads", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -12,6 +12,7 @@ export const leads = pgTable("leads", {
   projectType: text("project_type").default("Deriv Site Ecosystem"),
   message: text("message"),
   magicKey: uuid("magic_key").defaultRandom().unique(),
+  isBlocked: boolean("is_blocked").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

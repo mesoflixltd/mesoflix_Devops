@@ -28,6 +28,17 @@ export async function GET(req: Request) {
       return NextResponse.redirect(dashboardUrl);
     }
 
+    if (user.isBlocked) {
+      return new NextResponse(`
+        <html>
+          <body style="background-color: #000; color: #ff444f; font-family: monospace; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; padding: 20px;">
+            <h1 style="font-size: 2rem; border-bottom: 2px solid #ff444f; padding-bottom: 10px;">ACCESS DENIED</h1>
+            <p style="font-size: 1.2rem; color: #fff;">This node profile has been suspended by the institutional authority.</p>
+          </body>
+        </html>
+      `, { status: 403, headers: { "Content-Type": "text/html" }});
+    }
+
     // Capture telemetry securely
     const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
     const userAgent = req.headers.get("user-agent") || "unknown";

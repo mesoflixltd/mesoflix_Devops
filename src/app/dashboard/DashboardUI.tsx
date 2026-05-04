@@ -323,23 +323,12 @@ function ViewSettings({ lead }: any) { return <div className="p-10 text-center t
 function ViewVault({ }: any) { return <div className="p-10 text-center text-white/20 font-black uppercase italic">Security Vault locked...</div>; }
 
 function ViewRepo() {
-  const [bots, setBots] = useState<any[]>([]);
+  const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingBot, setEditingBot] = useState<any>(null);
-  
-  // Form state
-  const [file, setFile] = useState<File | null>(null);
-  const [formData, setFormData] = useState({
-    id: "",
-    name: "",
-    description: "",
-    category: "Trading Strategy",
-    icon: "chart",
-    status: "Stable",
-    accuracy: 80,
-    isPremium: false
-  });
+  const [fileToEdit, setFileToEdit] = useState<any>(null);
+  const [newBotName, setNewBotName] = useState("");
+  const [newBotContent, setNewBotContent] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchBots();
@@ -348,91 +337,89 @@ function ViewRepo() {
   const fetchBots = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/bots");
+      const res = await fetch("/api/user/repo?path=public/bots");
       const data = await res.json();
-      if (data.bots) setBots(data.bots);
+      if (data.files && Array.isArray(data.files)) {
+        // Filter out non-XML files just in case
+        setFiles(data.files.filter((f: any) => f.name.endsWith('.xml')));
+      } else {
+        setFiles([]);
+      }
     } catch (err) {
       console.error(err);
     }
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (path: string, sha: string) => {
     if (!confirm("Are you sure you want to delete this bot?")) return;
     try {
-      await fetch(`/api/admin/bots?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      setBots(bots.filter(b => b.id !== id));
+      await fetch(`/api/user/repo?path=${encodeURIComponent(path)}&sha=${sha}`, { method: "DELETE" });
+      setFiles(files.filter(f => f.sha !== sha));
     } catch (err) {
       console.error("Delete failed", err);
     }
   };
 
-  const handleEdit = (bot: any) => {
-    setEditingBot(bot);
-    setFormData(bot);
-    setFile(null);
-    setIsFormOpen(true);
+  const handleEdit = async (file: any) => {
+    setFileToEdit(file);
+    setNewBotName(file.name);
+    try {
+      const res = await fetch(file.download_url);
+      const text = await res.text();
+      setNewBotContent(text);
+    } catch(e) {
+      setNewBotContent("Error loading content");
+    }
   };
 
   const handleAddNew = () => {
-    setEditingBot(null);
-    setFormData({
-      id: "bot-" + Date.now(),
-      name: "",
-      description: "",
-      category: "Trading Strategy",
-      icon: "chart",
-      status: "Stable",
-      accuracy: 80,
-      isPremium: true
-    });
-    setFile(null);
-    setIsFormOpen(true);
+    setFileToEdit({ isNew: true, path: '' });
+    setNewBotName("new_strategy.xml");
+    setNewBotContent(`<?xml version="1.0" encoding="utf-8"?>\n<xml xmlns="http://www.w3.org/1999/xhtml" collection="false">\n  <!-- Enter Bot XML Here -->\n</xml>`);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingBot) {
-      // Update
-      try {
-        const res = await fetch("/api/admin/bots", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editingBot.id, updatedData: formData })
-        });
-        const data = await res.json();
-        if (data.success) {
-          setBots(bots.map(b => b.id === editingBot.id ? data.bot : b));
-          setIsFormOpen(false);
-        }
-      } catch (err) {
-        console.error(err);
+  const handleSave = async () => {
+    if (!newBotName.trim() || !newBotContent.trim()) return;
+    setSaving(true);
+    try {
+      const path = fileToEdit.isNew ? `public/bots/${newBotName}` : fileToEdit.path;
+      const b64 = Buffer.from(newBotContent).toString('base64');
+      const res = await fetch("/api/user/repo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path,
+          content: b64,
+          sha: fileToEdit.sha,
+          message: fileToEdit.isNew ? `Upload bot ${newBotName}` : `Update bot ${newBotName}`
+        })
+      });
+      if (res.ok) {
+        setFileToEdit(null);
+        fetchBots();
+      } else {
+        alert("Failed to save bot.");
       }
-    } else {
-      // Create
-      if (!file) {
-        alert("Please select an XML file to upload.");
-        return;
-      }
-      try {
-        const fd = new FormData();
-        fd.append("file", file);
-        // ensure name matches filename if possible, or use provided
-        const finalBotData = { ...formData, name: formData.name || file.name };
-        fd.append("botData", JSON.stringify(finalBotData));
+    } catch(e) {
+      console.error(e);
+      alert("Error saving bot.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-        const res = await fetch("/api/admin/bots", {
-          method: "POST",
-          body: fd
-        });
-        const data = await res.json();
-        if (data.success) {
-          setBots([data.bot, ...bots]);
-          setIsFormOpen(false);
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewBotName(file.name);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (typeof ev.target?.result === 'string') {
+          setNewBotContent(ev.target.result);
         }
-      } catch (err) {
-        console.error(err);
-      }
+      };
+      reader.readAsText(file);
     }
   };
 
@@ -440,117 +427,78 @@ function ViewRepo() {
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white uppercase italic">Bots Repository</h1>
-          <p className="text-white/40 font-bold text-sm tracking-wide italic mt-2">Manage strategies deployed to Mesoflix Bot platform.</p>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white uppercase italic">Active Bots</h1>
+          <p className="text-white/40 font-bold text-sm tracking-wide italic mt-2">Manage strategies deployed to your platform.</p>
         </div>
-        <button onClick={handleAddNew} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center gap-2">
-          <PlusCircle className="w-4 h-4" /> Upload Bot
-        </button>
+        {!fileToEdit && (
+          <button onClick={handleAddNew} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center gap-2">
+            <UploadCloud className="w-4 h-4" /> Upload Bot
+          </button>
+        )}
       </div>
 
-      {isFormOpen && (
-        <div className="p-8 rounded-[2.5rem] bg-[#020617] border border-red-500/30 shadow-2xl relative overflow-hidden">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-black uppercase italic text-white">{editingBot ? "Edit Strategy" : "Upload New Strategy"}</h2>
-            <button onClick={() => setIsFormOpen(false)} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {!editingBot && (
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">XML Bot File</label>
-                  <input type="file" accept=".xml" onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      setFile(f);
-                      if (!formData.name) setFormData({...formData, name: f.name});
-                    }
-                  }} className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-red-500/20 file:text-red-500 hover:file:bg-red-500/30 transition-all cursor-pointer" required />
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Filename</label>
-                <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Display Name (ID)</label>
-                <input type="text" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required disabled={!!editingBot} />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Description</label>
-                <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors h-24 resize-none" required />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Category</label>
-                <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Status</label>
-                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors">
-                  <option value="Stable">Stable</option>
-                  <option value="Trending">Trending</option>
-                  <option value="Beta">Beta</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-white/50 mb-2">Accuracy (%)</label>
-                <input type="number" min="0" max="100" value={formData.accuracy} onChange={e => setFormData({...formData, accuracy: parseInt(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors" required />
-              </div>
-
-              <div className="flex items-center gap-3 pt-6">
-                <input type="checkbox" id="isPremium" checked={formData.isPremium} onChange={e => setFormData({...formData, isPremium: e.target.checked})} className="w-4 h-4 accent-red-500 rounded cursor-pointer" />
-                <label htmlFor="isPremium" className="text-[10px] font-black uppercase tracking-widest text-white/80 cursor-pointer">Premium Strategy</label>
-              </div>
+      {fileToEdit ? (
+         <div className="p-8 rounded-[2.5rem] bg-[#020617] border border-white/10 relative overflow-hidden">
+            <div className="flex justify-between items-center mb-6">
+               <h3 className="text-xl font-black uppercase tracking-tighter text-white italic">{fileToEdit.isNew ? 'Upload XML Bot' : 'Edit XML Strategy'}</h3>
+               <button onClick={() => setFileToEdit(null)} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-
-            <div className="pt-4 border-t border-white/10 flex justify-end gap-4">
-              <button type="button" onClick={() => setIsFormOpen(false)} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors">Cancel</button>
-              <button type="submit" className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors flex items-center gap-2">
-                <UploadCloud className="w-4 h-4" /> {editingBot ? "Save Changes" : "Upload to Server"}
-              </button>
+            
+            <div className="space-y-6">
+               {fileToEdit.isNew && (
+                 <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">Select XML File</label>
+                    <input type="file" accept=".xml" onChange={handleFileUpload} className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-red-500/20 file:text-red-500 hover:file:bg-red-500/30 transition-all cursor-pointer" />
+                 </div>
+               )}
+               
+               <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">Bot Filename</label>
+                  <input type="text" value={newBotName} onChange={e => setNewBotName(e.target.value)} disabled={!fileToEdit.isNew} className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-4 py-3 text-sm font-mono text-white/70 focus:outline-none focus:border-red-500 transition-colors" />
+               </div>
+               <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">XML Source Payload</label>
+                  <textarea value={newBotContent} onChange={e => setNewBotContent(e.target.value)} className="w-full h-96 bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] font-mono text-emerald-400 focus:outline-none focus:border-red-500 transition-colors resize-none scrollbar-hide" spellCheck="false" />
+               </div>
+               <div className="flex justify-end gap-4 pt-4">
+                  <button onClick={() => setFileToEdit(null)} className="px-6 py-3 border border-white/10 text-white/40 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">Cancel</button>
+                  <button onClick={handleSave} disabled={saving} className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all">
+                     {saving ? 'Processing...' : 'Deploy to Node'}
+                  </button>
+               </div>
             </div>
-          </form>
+         </div>
+      ) : loading ? (
+        <div className="flex items-center justify-center py-20 text-white/20 font-black uppercase italic tracking-widest">Scanning Secure Enclave...</div>
+      ) : files.length === 0 ? (
+        <div className="p-12 text-center border border-white/5 bg-white/[0.01] rounded-[2.5rem]">
+           <Bot className="w-12 h-12 text-white/10 mx-auto mb-4" />
+           <p className="text-white/40 font-bold uppercase tracking-widest italic text-[11px]">No active bots deployed in this cluster.</p>
         </div>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-white/20 font-black uppercase italic tracking-widest">Scanning Repository...</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {bots.map(bot => (
-            <div key={bot.id} className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all flex flex-col group relative overflow-hidden">
+          {files.map(bot => (
+            <div key={bot.sha} className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-red-500/30 transition-all flex flex-col group relative overflow-hidden shadow-xl">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-red-500/5 blur-3xl rounded-full group-hover:bg-red-500/10 transition-colors" />
               <div className="flex justify-between items-start mb-4 relative z-10">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-white/70" />
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center group-hover:border-red-500/30 transition-colors">
+                    <Code2 className="w-6 h-6 text-red-500/70" />
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-lg leading-tight">{bot.id}</h3>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mt-1">{bot.name}</p>
+                    <h3 className="text-white font-bold text-sm tracking-widest leading-tight italic max-w-[200px] truncate">{bot.name}</h3>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mt-1">XML Payload</p>
                   </div>
                 </div>
-                {bot.isPremium && <span className="px-2 py-1 bg-amber-500/20 text-amber-500 rounded border border-amber-500/30 text-[9px] font-black uppercase tracking-widest">Premium</span>}
               </div>
-              <p className="text-sm text-white/60 mb-6 flex-1 relative z-10 line-clamp-2">{bot.description}</p>
               
-              <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5 relative z-10">
-                <div className="flex gap-4">
-                  <div className="flex flex-col gap-1"><span className="text-[9px] font-black uppercase tracking-widest text-white/30">Accuracy</span><span className="text-white font-bold text-sm">{bot.accuracy}%</span></div>
-                  <div className="flex flex-col gap-1"><span className="text-[9px] font-black uppercase tracking-widest text-white/30">Status</span><span className="text-white font-bold text-sm">{bot.status}</span></div>
-                </div>
+              <div className="flex items-center justify-end mt-auto pt-4 relative z-10">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleEdit(bot)} className="p-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-lg transition-colors" title="Edit Metadata">
-                    <Edit3 className="w-4 h-4" />
+                  <button onClick={() => handleEdit(bot)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white rounded-xl transition-colors text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                    <Edit3 className="w-3 h-3" /> Edit Code
                   </button>
-                  <button onClick={() => handleDelete(bot.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors" title="Delete Strategy">
-                    <Trash2 className="w-4 h-4" />
+                  <button onClick={() => handleDelete(bot.path, bot.sha)} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-colors text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                    <Trash2 className="w-3 h-3" /> Delete
                   </button>
                 </div>
               </div>
