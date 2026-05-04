@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         const allLeads = await db.select().from(leads);
         // Send push to everyone with a subscription
         await Promise.allSettled(
-          allLeads.filter(l => l.pushSubscription).map(target => 
+          allLeads.filter((l: any) => l.pushSubscription).map((target: any) => 
             webPush.sendNotification(target.pushSubscription as any, payload)
           )
         );
