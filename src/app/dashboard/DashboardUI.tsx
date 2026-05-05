@@ -1265,6 +1265,4 @@ function ViewVideos() {
        )}
     </div>
   );
-}div>
-  );
 }
