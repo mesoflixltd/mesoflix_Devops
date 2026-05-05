@@ -8,7 +8,7 @@ import {
   Menu, X, MessageSquare, Zap, ArrowRight, Copy, Check,
   ExternalLink, Shield, Clock as ClockIcon, ChevronRight,
   User, Search, Cpu, Mail, Megaphone, AlertCircle, Info,
-  Bot, UploadCloud, Trash2, Edit3, PlusCircle, Eye, EyeOff, Fingerprint, Play
+  Bot, UploadCloud, Trash2, Edit3, PlusCircle, Eye, EyeOff, Fingerprint, Play, AlertTriangle
 } from "lucide-react";
 
 export default function DashboardUI({ lead, project }: { lead: any, project: any }) {
@@ -843,6 +843,7 @@ function LockScreen({ lead, onUnlock }: any) {
 function ViewRepo() {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [fileToEdit, setFileToEdit] = useState<any>(null);
   const [newBotName, setNewBotName] = useState("");
   const [newBotContent, setNewBotContent] = useState("");
@@ -855,6 +856,7 @@ function ViewRepo() {
 
   const fetchBots = async () => {
     setLoading(true);
+    setError("");
     try {
       // Try multiple common repository structures to find bots
       const pathsToTry = ["public/bots", "bots", ""];
@@ -865,6 +867,12 @@ function ViewRepo() {
         const res = await fetch(`/api/user/repo?path=${encodeURIComponent(p)}`);
         const data = await res.json();
         console.log(`Scan Result for ${p || 'root'}:`, data);
+        
+        if (data.error) {
+           setError(`Sync Error: ${data.error}`);
+           continue;
+        }
+
         if (data.files && Array.isArray(data.files) && data.files.length > 0) {
            const xmlFiles = data.files.filter((f: any) => f.name.endsWith(".xml"));
            if (xmlFiles.length > 0) {
@@ -874,9 +882,12 @@ function ViewRepo() {
            }
         }
       }
-      if (foundFiles.length === 0) console.warn("No bots discovered in any common repository paths.");
+      if (foundFiles.length === 0 && !error) {
+        setError("No XML strategies discovered in the repository (tried /public/bots, /bots, and /root). Ensure your bots are in one of these directories on the 'master' branch.");
+      }
       setFiles(foundFiles);
-    } catch (err) {
+    } catch (err: any) {
+      setError(`Critical Handshake Failure: ${err.message}`);
       console.error("Critical Registry sync failure:", err);
     }
     setLoading(false);
@@ -968,6 +979,12 @@ function ViewRepo() {
         )}
       </div>
 
+      {error && (
+        <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
+           <AlertTriangle className="w-4 h-4" /> {error}
+        </div>
+      )}
+
       {fileToEdit ? (
          <div className="p-8 rounded-[2.5rem] bg-[#020617] border border-white/10 relative overflow-hidden">
             <div className="flex justify-between items-center mb-6">
@@ -1045,6 +1062,7 @@ function ViewVideos() {
   const [videos, setVideos] = useState<any[]>([]);
   const [availableBots, setAvailableBots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newVideo, setNewVideo] = useState({ title: "", description: "", youtubeUrl: "", botName: "" });
   const [saving, setSaving] = useState(false);
@@ -1101,6 +1119,7 @@ function ViewVideos() {
 
   const saveToRepo = async (updatedVideos: any[]) => {
     setSaving(true);
+    setError("");
     try {
       const jsonStr = JSON.stringify({ videos: updatedVideos }, null, 2);
       const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
@@ -1112,21 +1131,22 @@ function ViewVideos() {
           path: "public/bots/classes.json",
           content: base64,
           sha: classesSha,
-          message: "Sync Mesoflix Academy Registry"
-        })
-      });
           message: "Sync Academy Registry"
         })
       });
       
       const data = await res.json();
       console.log("Academy Save Response:", data);
+      
       if (res.ok) {
         setClassesSha(data.data.content.sha);
         setVideos(updatedVideos);
         return true;
+      } else {
+        setError(data.error || "Failed to push academy update to GitHub.");
       }
-    } catch (err) {
+    } catch (err: any) {
+      setError(`Academy Sync Exception: ${err.message}`);
       console.error("Failed to sync to GitHub");
     } finally {
       setSaving(false);
@@ -1167,6 +1187,12 @@ function ViewVideos() {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
+       {error && (
+          <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
+             <AlertTriangle className="w-4 h-4" /> {error}
+          </div>
+       )}
+
        <header className="flex items-center justify-between">
           <div>
             <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Academy</h2>
