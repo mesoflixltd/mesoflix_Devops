@@ -200,10 +200,10 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
                 {activeTab === "status" && <ViewStatus project={project} steps={PROGRESS_STEPS} />}
                 {activeTab === "domain" && <ViewDomain lead={lead} project={project} />}
                 {activeTab === "trading" && <ViewTrading lead={lead} />}
-                {activeTab === "repo" && <ViewRepo />}
+                {activeTab === "repo" && <ViewRepo project={project} />}
                 {activeTab === "settings" && <ViewSettings lead={lead} />}
                 {activeTab === "vault" && <ViewVault lead={lead} biometricsEnabled={biometricsEnabled} setBiometricsEnabled={setBiometricsEnabled} />}
-                {activeTab === "videos" && <ViewVideos />}
+                {activeTab === "videos" && <ViewVideos project={project} />}
              </motion.div>
            </AnimatePresence>
 
@@ -840,7 +840,7 @@ function LockScreen({ lead, onUnlock }: any) {
   );
 }
 
-function ViewRepo() {
+function ViewRepo({ project }: any) {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -874,10 +874,10 @@ function ViewRepo() {
         }
 
         if (data.files && Array.isArray(data.files) && data.files.length > 0) {
-           const xmlFiles = data.files.filter((f: any) => f.name.endsWith(".xml"));
+           const xmlFiles = data.files.filter((f: any) => f.name.toLowerCase().endsWith(".xml"));
            if (xmlFiles.length > 0) {
               console.log(`Successfully found ${xmlFiles.length} bots in ${p || 'root'}`);
-              foundFiles = data.files.filter((f: any) => f.name.endsWith(".xml") || f.type === "dir");
+              foundFiles = data.files.filter((f: any) => f.name.toLowerCase().endsWith(".xml") || f.type === "dir");
               break;
            }
         }
@@ -1016,14 +1016,24 @@ function ViewRepo() {
                </div>
             </div>
          </div>
-      ) : loading ? (
-        <div className="flex items-center justify-center py-20 text-white/20 font-black uppercase italic tracking-widest">Scanning Secure Enclave...</div>
-      ) : files.length === 0 ? (
-        <div className="p-12 text-center border border-white/5 bg-white/[0.01] rounded-[2.5rem]">
-           <Bot className="w-12 h-12 text-white/10 mx-auto mb-4" />
-           <p className="text-white/40 font-bold uppercase tracking-widest italic text-[11px]">No active bots deployed in this cluster.</p>
-        </div>
       ) : (
+        <>
+            {files.length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10 w-fit mb-6">
+                 <Database className="w-3 h-3 text-red-500" />
+                 <span className="text-[10px] font-black uppercase tracking-widest text-white/40 italic">Connected: {project?.githubRepo || 'No Repo'} (Branch: master)</span>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex items-center justify-center py-20 text-white/20 font-black uppercase italic tracking-widest">Scanning Secure Enclave...</div>
+            ) : files.length === 0 ? (
+              <div className="p-12 text-center border border-white/5 bg-white/[0.01] rounded-[2.5rem]">
+                 <Bot className="w-12 h-12 text-white/10 mx-auto mb-4" />
+                 <p className="text-white/40 font-bold uppercase tracking-widest italic text-[11px]">No active bots discovered in {project?.githubRepo || 'assigned repository'}.</p>
+                 <p className="text-[9px] text-white/20 uppercase tracking-widest mt-2 italic">Scanning: public/bots, bots/, and root</p>
+              </div>
+            ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {files.map(bot => (
             <div key={bot.sha} className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 hover:border-red-500/30 transition-all flex flex-col group relative overflow-hidden shadow-xl">
@@ -1054,12 +1064,23 @@ function ViewRepo() {
           ))}
         </div>
       )}
+        </>
+      )}
     </div>
   );
 }
 
-function ViewVideos() {
-  const [videos, setVideos] = useState<any[]>([]);
+function ViewVideos({ project }: any) {
+  const [videos, setVideos] = useState<any[]>([
+    {
+      id: 'default-1',
+      title: 'Academy Introduction',
+      description: 'Welcome to your instructional suite. Learn how to manage your bots and strategies directly from your repository.',
+      youtubeUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+      botName: 'Example_Strategy.xml',
+      createdAt: new Date().toISOString(),
+    }
+  ]);
   const [availableBots, setAvailableBots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1088,7 +1109,7 @@ function ViewVideos() {
         const data = await res.json();
         console.log(`Academy scan path '${p}':`, data);
         if (data.files) {
-          const xmlFiles = data.files.filter((f: any) => f.name.endsWith(".xml"));
+          const xmlFiles = data.files.filter((f: any) => f.name.toLowerCase().endsWith(".xml"));
           allBots = [...allBots, ...xmlFiles];
         }
       }
