@@ -8,7 +8,7 @@ import {
   Menu, X, MessageSquare, Zap, ArrowRight, Copy, Check,
   ExternalLink, Shield, Clock as ClockIcon, ChevronRight,
   User, Search, Cpu, Mail, Megaphone, AlertCircle, Info,
-  Bot, UploadCloud, Trash2, Edit3, PlusCircle, Eye, EyeOff, Fingerprint
+  Bot, UploadCloud, Trash2, Edit3, PlusCircle, Eye, EyeOff, Fingerprint, Play
 } from "lucide-react";
 
 export default function DashboardUI({ lead, project }: { lead: any, project: any }) {
@@ -203,6 +203,7 @@ export default function DashboardUI({ lead, project }: { lead: any, project: any
                 {activeTab === "repo" && <ViewRepo />}
                 {activeTab === "settings" && <ViewSettings lead={lead} />}
                 {activeTab === "vault" && <ViewVault lead={lead} biometricsEnabled={biometricsEnabled} setBiometricsEnabled={setBiometricsEnabled} />}
+                {activeTab === "videos" && <ViewVideos />}
              </motion.div>
            </AnimatePresence>
 
@@ -303,6 +304,7 @@ function SidebarNav({ activeTab, switchTab }: any) {
     { id: "domain", label: "Domain Setup", icon: <Globe className="w-4 h-4" /> },
     { id: "trading", label: "Trading Setup", icon: <Code2 className="w-4 h-4" /> },
     { id: "repo", label: "Bots Repository", icon: <Database className="w-4 h-4" /> },
+    { id: "videos", label: "Mesoflix Academy", icon: <Play className="w-4 h-4" /> },
     { id: "settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
     { id: "vault", label: "Security Vault", icon: <ShieldCheck className="w-4 h-4" /> },
   ];
@@ -1034,3 +1036,235 @@ function ViewRepo() {
   );
 }
 
+function ViewVideos() {
+  const [videos, setVideos] = useState<any[]>([]);
+  const [availableBots, setAvailableBots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newVideo, setNewVideo] = useState({ title: "", description: "", youtubeUrl: "", botName: "" });
+  const [saving, setSaving] = useState(false);
+  const [classesSha, setClassesSha] = useState("");
+
+  useEffect(() => {
+    initAcademy();
+  }, []);
+
+  const initAcademy = async () => {
+    setLoading(true);
+    await Promise.all([fetchClassesFromRepo(), fetchAvailableBots()]);
+    setLoading(false);
+  };
+
+  const fetchAvailableBots = async () => {
+    try {
+      // Fetch bots from multiple common paths
+      const paths = ["public/bots", "bots"];
+      let allBots: any[] = [];
+      for (const p of paths) {
+        const res = await fetch(`/api/user/repo?path=${encodeURIComponent(p)}`);
+        const data = await res.json();
+        if (data.files) {
+          const xmlFiles = data.files.filter((f: any) => f.name.endsWith(".xml"));
+          allBots = [...allBots, ...xmlFiles];
+        }
+      }
+      setAvailableBots(allBots);
+    } catch (err) {
+      console.error("Failed to fetch available bots");
+    }
+  };
+
+  const fetchClassesFromRepo = async () => {
+    try {
+      const res = await fetch("/api/user/repo?path=public/bots/classes.json");
+      const data = await res.json();
+      if (data.files && data.files[0] && data.files[0].content) {
+        const content = atob(data.files[0].content.replace(/\n/g, ''));
+        const parsed = JSON.parse(content);
+        setVideos(parsed.videos || []);
+        setClassesSha(data.files[0].sha);
+      }
+    } catch (err) {
+      console.log("Academy registry not found, starting fresh.");
+    }
+  };
+
+  const saveToRepo = async (updatedVideos: any[]) => {
+    setSaving(true);
+    try {
+      const jsonStr = JSON.stringify({ videos: updatedVideos }, null, 2);
+      const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+      
+      const res = await fetch("/api/user/repo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: "public/bots/classes.json",
+          content: base64,
+          sha: classesSha,
+          message: "Sync Mesoflix Academy Registry"
+        })
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        setClassesSha(data.data.content.sha);
+        setVideos(updatedVideos);
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to sync to GitHub");
+    } finally {
+      setSaving(false);
+    }
+    return false;
+  };
+
+  const handleAddVideo = async () => {
+    if (!newVideo.title || !newVideo.youtubeUrl) return;
+    
+    // Convert youtube link to embed link
+    let embedUrl = newVideo.youtubeUrl;
+    if (embedUrl.includes("watch?v=")) {
+      embedUrl = embedUrl.replace("watch?v=", "embed/");
+    } else if (embedUrl.includes("youtu.be/")) {
+      embedUrl = embedUrl.replace("youtu.be/", "youtube.com/embed/");
+    }
+    
+    const videoToAdd = { 
+      ...newVideo, 
+      id: Date.now().toString(),
+      youtubeUrl: embedUrl,
+      createdAt: new Date().toISOString() 
+    };
+    
+    const updated = [videoToAdd, ...videos];
+    if (await saveToRepo(updated)) {
+      setShowAdd(false);
+      setNewVideo({ title: "", description: "", youtubeUrl: "", botName: "" });
+    }
+  };
+
+  const handleDeleteVideo = async (id: string) => {
+    if (!confirm("Delete this class from the repository registry?")) return;
+    const updated = videos.filter(v => v.id !== id);
+    await saveToRepo(updated);
+  };
+
+  return (
+    <div className="space-y-10 animate-in fade-in duration-700">
+       <header className="flex items-center justify-between">
+          <div>
+            <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Mesoflix Academy</h2>
+            <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Repo-Sync Instructional Suite</p>
+          </div>
+          <button 
+            onClick={() => setShowAdd(true)}
+            className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2"
+          >
+            <PlusCircle className="w-4 h-4" /> Deploy New Class
+          </button>
+       </header>
+
+       {showAdd && (
+          <div className="p-8 rounded-[3rem] bg-white/5 border border-white/10 space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4">Class Title</label>
+                   <input 
+                     value={newVideo.title}
+                     onChange={e => setNewVideo({...newVideo, title: e.target.value})}
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-red-500"
+                     placeholder="e.g. Wizard Strategy Tutorial"
+                   />
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4">YouTube URL</label>
+                   <input 
+                     value={newVideo.youtubeUrl}
+                     onChange={e => setNewVideo({...newVideo, youtubeUrl: e.target.value})}
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-red-500"
+                     placeholder="https://youtube.com/watch?v=..."
+                   />
+                </div>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4">Linked Strategy (Optional)</label>
+                   <select 
+                     value={newVideo.botName}
+                     onChange={e => setNewVideo({...newVideo, botName: e.target.value})}
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-red-500 appearance-none"
+                   >
+                     <option value="">No Strategy Linked</option>
+                     {availableBots.map(bot => (
+                       <option key={bot.name} value={bot.name.replace('.xml', '')}>{bot.name}</option>
+                     ))}
+                   </select>
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4">Description</label>
+                   <input 
+                     value={newVideo.description}
+                     onChange={e => setNewVideo({...newVideo, description: e.target.value})}
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-red-500"
+                     placeholder="Brief overview of the lesson..."
+                   />
+                </div>
+             </div>
+             <div className="flex justify-end gap-4">
+                <button onClick={() => setShowAdd(false)} className="px-8 py-4 text-white/40 font-black uppercase text-xs">Cancel</button>
+                <button 
+                  onClick={handleAddVideo}
+                  disabled={saving}
+                  className="px-8 py-4 bg-red-500 text-white rounded-2xl font-black uppercase text-xs hover:bg-red-600 transition-all shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                >
+                  {saving ? 'Pushing to Repo...' : 'Sync Class to GitHub'}
+                </button>
+             </div>
+          </div>
+       )}
+
+       {loading ? (
+         <div className="flex justify-center py-20"><Activity className="w-10 h-10 text-red-500 animate-pulse" /></div>
+       ) : (
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {videos.length > 0 ? videos.map((v) => (
+               <div key={v.id} className="group rounded-[2.5rem] bg-white/5 border border-white/10 overflow-hidden hover:border-red-500/30 transition-all shadow-2xl flex flex-col">
+                  <div className="aspect-video relative bg-black">
+                     <iframe 
+                       src={v.youtubeUrl}
+                       className="w-full h-full border-none"
+                       allowFullScreen
+                     />
+                  </div>
+                  <div className="p-8 flex flex-col flex-1">
+                     <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xl font-black text-white italic uppercase">{v.title}</h3>
+                        {v.botName && <Bot className="w-4 h-4 text-red-500" />}
+                     </div>
+                     <p className="text-white/40 text-[11px] font-bold italic line-clamp-2 flex-1">{v.description}</p>
+                     <div className="mt-8 flex items-center justify-between">
+                        <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">GitHub Sync Active</span>
+                        <button 
+                          onClick={() => handleDeleteVideo(v.id)}
+                          className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all"
+                        >
+                           <Trash2 className="w-4 h-4" />
+                        </button>
+                     </div>
+                  </div>
+               </div>
+            )) : (
+              <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-white/5 rounded-[3rem]">
+                 <Play className="w-12 h-12 text-white/5" />
+                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">No classes found in repository registry</p>
+              </div>
+            )}
+         </div>
+       )}
+    </div>
+  );
+}div>
+  );
+}

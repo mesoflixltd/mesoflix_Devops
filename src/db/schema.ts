@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, boolean, jsonb, serial } from "drizzle-orm/pg-core";
 
 export const leads = pgTable("leads", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -65,5 +65,16 @@ export const notifications = pgTable("notifications", {
   message: text("message").notNull(),
   type: text("type").notNull().default("web"), // web, email, both
   isRead: text("is_read").default("false").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Institutional Educational Resources
+export const videos = pgTable("videos", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: uuid("lead_id").references(() => leads.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  youtubeUrl: text("youtube_url").notNull(),
+  botName: text("bot_name"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
