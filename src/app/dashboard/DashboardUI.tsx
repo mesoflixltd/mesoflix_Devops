@@ -304,7 +304,7 @@ function SidebarNav({ activeTab, switchTab }: any) {
     { id: "domain", label: "Domain Setup", icon: <Globe className="w-4 h-4" /> },
     { id: "trading", label: "Trading Setup", icon: <Code2 className="w-4 h-4" /> },
     { id: "repo", label: "Bots Repository", icon: <Database className="w-4 h-4" /> },
-    { id: "videos", label: "Mesoflix Academy", icon: <Play className="w-4 h-4" /> },
+    { id: "videos", label: "Academy", icon: <Play className="w-4 h-4" /> },
     { id: "settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
     { id: "vault", label: "Security Vault", icon: <ShieldCheck className="w-4 h-4" /> },
   ];
@@ -849,6 +849,7 @@ function ViewRepo() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    console.log("Initializing Repository View. Scanning for bots on 'master' branch...");
     fetchBots();
   }, []);
 
@@ -860,19 +861,23 @@ function ViewRepo() {
       let foundFiles: any[] = [];
       
       for (const p of pathsToTry) {
+        console.log(`Scanning path: ${p || 'root'}`);
         const res = await fetch(`/api/user/repo?path=${encodeURIComponent(p)}`);
         const data = await res.json();
+        console.log(`Scan Result for ${p || 'root'}:`, data);
         if (data.files && Array.isArray(data.files) && data.files.length > 0) {
            const xmlFiles = data.files.filter((f: any) => f.name.endsWith(".xml"));
            if (xmlFiles.length > 0) {
+              console.log(`Successfully found ${xmlFiles.length} bots in ${p || 'root'}`);
               foundFiles = data.files.filter((f: any) => f.name.endsWith(".xml") || f.type === "dir");
               break;
            }
         }
       }
+      if (foundFiles.length === 0) console.warn("No bots discovered in any common repository paths.");
       setFiles(foundFiles);
     } catch (err) {
-      console.error("Registry sync failed.", err);
+      console.error("Critical Registry sync failure:", err);
     }
     setLoading(false);
   };
@@ -1057,35 +1062,40 @@ function ViewVideos() {
 
   const fetchAvailableBots = async () => {
     try {
-      // Fetch bots from multiple common paths
+      console.log("Academy: Scanning repository for strategy links...");
       const paths = ["public/bots", "bots"];
       let allBots: any[] = [];
       for (const p of paths) {
         const res = await fetch(`/api/user/repo?path=${encodeURIComponent(p)}`);
         const data = await res.json();
+        console.log(`Academy scan path '${p}':`, data);
         if (data.files) {
           const xmlFiles = data.files.filter((f: any) => f.name.endsWith(".xml"));
           allBots = [...allBots, ...xmlFiles];
         }
       }
+      console.log(`Academy found ${allBots.length} total strategies available.`);
       setAvailableBots(allBots);
     } catch (err) {
-      console.error("Failed to fetch available bots");
+      console.error("Academy Bot Scan Error:", err);
     }
   };
 
   const fetchClassesFromRepo = async () => {
     try {
+      console.log("Academy: Fetching classes.json from master branch...");
       const res = await fetch("/api/user/repo?path=public/bots/classes.json");
       const data = await res.json();
+      console.log("Academy Registry Raw Response:", data);
       if (data.files && data.files[0] && data.files[0].content) {
         const content = atob(data.files[0].content.replace(/\n/g, ''));
         const parsed = JSON.parse(content);
+        console.log(`Loaded ${parsed.videos?.length || 0} classes from registry.`);
         setVideos(parsed.videos || []);
         setClassesSha(data.files[0].sha);
       }
     } catch (err) {
-      console.log("Academy registry not found, starting fresh.");
+      console.warn("Academy Registry not found or empty. Using empty state.");
     }
   };
 
@@ -1105,8 +1115,12 @@ function ViewVideos() {
           message: "Sync Mesoflix Academy Registry"
         })
       });
+          message: "Sync Academy Registry"
+        })
+      });
       
       const data = await res.json();
+      console.log("Academy Save Response:", data);
       if (res.ok) {
         setClassesSha(data.data.content.sha);
         setVideos(updatedVideos);
@@ -1155,7 +1169,7 @@ function ViewVideos() {
     <div className="space-y-10 animate-in fade-in duration-700">
        <header className="flex items-center justify-between">
           <div>
-            <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Mesoflix Academy</h2>
+            <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Academy</h2>
             <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Repo-Sync Instructional Suite</p>
           </div>
           <button 
