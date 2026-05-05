@@ -1071,21 +1071,16 @@ function ViewRepo({ project }: any) {
 }
 
 function ViewVideos({ project }: any) {
-  const [videos, setVideos] = useState<any[]>([
-    {
-      id: 'default-1',
-      title: 'Academy Introduction',
-      description: 'Welcome to your instructional suite. Learn how to manage your bots and strategies directly from your repository.',
-      youtubeUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-      botName: 'Example_Strategy.xml',
-      createdAt: new Date().toISOString(),
-    }
-  ]);
+  const [videos, setVideos] = useState<any[]>([]);
+  const [bots, setBots] = useState<any[]>([]);
+  const [fullRegistry, setFullRegistry] = useState<any>({});
   const [availableBots, setAvailableBots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddBot, setShowAddBot] = useState(false);
   const [newVideo, setNewVideo] = useState({ title: "", description: "", youtubeUrl: "", botName: "" });
+  const [newAcademyBot, setNewAcademyBot] = useState({ title: "", description: "", fileName: "" });
   const [saving, setSaving] = useState(false);
   const [classesSha, setClassesSha] = useState("");
 
@@ -1129,8 +1124,10 @@ function ViewVideos({ project }: any) {
       if (data.files && data.files[0] && data.files[0].content) {
         const content = atob(data.files[0].content.replace(/\n/g, ''));
         const parsed = JSON.parse(content);
-        console.log(`Loaded ${parsed.videos?.length || 0} classes from registry.`);
+        console.log(`Loaded Academy Registry:`, parsed);
         setVideos(parsed.videos || []);
+        setBots(parsed.bots || []);
+        setFullRegistry(parsed);
         setClassesSha(data.files[0].sha);
       }
     } catch (err) {
@@ -1138,11 +1135,15 @@ function ViewVideos({ project }: any) {
     }
   };
 
-  const saveToRepo = async (updatedVideos: any[]) => {
+  const saveToRepo = async (updatedVideos: any[], updatedBots: any[]) => {
     setSaving(true);
     setError("");
     try {
-      const jsonStr = JSON.stringify({ videos: updatedVideos }, null, 2);
+      const jsonStr = JSON.stringify({ 
+        ...fullRegistry,
+        videos: updatedVideos,
+        bots: updatedBots
+      }, null, 2);
       const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
       
       const res = await fetch("/api/user/repo", {
@@ -1162,6 +1163,8 @@ function ViewVideos({ project }: any) {
       if (res.ok) {
         setClassesSha(data.data.content.sha);
         setVideos(updatedVideos);
+        setBots(updatedBots);
+        setFullRegistry({ ...fullRegistry, videos: updatedVideos, bots: updatedBots });
         return true;
       } else {
         setError(data.error || "Failed to push academy update to GitHub.");
@@ -1194,16 +1197,38 @@ function ViewVideos({ project }: any) {
     };
     
     const updated = [videoToAdd, ...videos];
-    if (await saveToRepo(updated)) {
+    if (await saveToRepo(updated, bots)) {
       setShowAdd(false);
       setNewVideo({ title: "", description: "", youtubeUrl: "", botName: "" });
+    }
+  };
+
+  const handleAddBot = async () => {
+    if (!newAcademyBot.title || !newAcademyBot.fileName) return;
+    
+    const botToAdd = { 
+      ...newAcademyBot, 
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString() 
+    };
+    
+    const updated = [botToAdd, ...bots];
+    if (await saveToRepo(videos, updated)) {
+      setShowAddBot(false);
+      setNewAcademyBot({ title: "", description: "", fileName: "" });
     }
   };
 
   const handleDeleteVideo = async (id: string) => {
     if (!confirm("Delete this class from the repository registry?")) return;
     const updated = videos.filter(v => v.id !== id);
-    await saveToRepo(updated);
+    await saveToRepo(updated, bots);
+  };
+
+  const handleDeleteBot = async (id: string) => {
+    if (!confirm("Delete this bot from the repository registry?")) return;
+    const updated = bots.filter(b => b.id !== id);
+    await saveToRepo(videos, updated);
   };
 
   return (
@@ -1219,13 +1244,73 @@ function ViewVideos({ project }: any) {
             <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">Academy</h2>
             <p className="text-white/40 text-sm font-bold uppercase tracking-widest mt-2">Repo-Sync Instructional Suite</p>
           </div>
-          <button 
-            onClick={() => setShowAdd(true)}
-            className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2"
-          >
-            <PlusCircle className="w-4 h-4" /> Deploy New Class
-          </button>
+          <div className="flex gap-4">
+            <button 
+              onClick={() => setShowAddBot(true)}
+              className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border border-white/10"
+            >
+              <Bot className="w-4 h-4 text-red-500" /> Featured Bot
+            </button>
+            <button 
+              onClick={() => setShowAdd(true)}
+              className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+            >
+              <PlusCircle className="w-4 h-4" /> Deploy New Class
+            </button>
+          </div>
        </header>
+
+       {showAddBot && (
+          <div className="p-8 rounded-[3rem] bg-[#020617] border border-red-500/30 space-y-6 animate-in zoom-in-95 duration-300 shadow-[0_0_50px_rgba(239,68,68,0.1)]">
+             <div className="flex items-center gap-3 mb-4">
+                <Bot className="w-6 h-6 text-red-500" />
+                <h3 className="text-xl font-black uppercase italic text-white">Feature Bot in Academy</h3>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4">Bot Label</label>
+                   <input 
+                     value={newAcademyBot.title}
+                     onChange={e => setNewAcademyBot({...newAcademyBot, title: e.target.value})}
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-red-500"
+                     placeholder="e.g. Master Trend Follower"
+                   />
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4">Select XML Strategy</label>
+                   <select 
+                     value={newAcademyBot.fileName}
+                     onChange={e => setNewAcademyBot({...newAcademyBot, fileName: e.target.value})}
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-red-500 appearance-none"
+                   >
+                     <option value="">Choose Strategy...</option>
+                     {availableBots.map(bot => (
+                       <option key={bot.name} value={bot.name}>{bot.name}</option>
+                     ))}
+                   </select>
+                </div>
+             </div>
+             <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/40 ml-4">Description</label>
+                <input 
+                  value={newAcademyBot.description}
+                  onChange={e => setNewAcademyBot({...newAcademyBot, description: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-red-500"
+                  placeholder="Why should students use this bot?"
+                />
+             </div>
+             <div className="flex justify-end gap-4">
+                <button onClick={() => setShowAddBot(false)} className="px-8 py-4 text-white/40 font-black uppercase text-xs">Cancel</button>
+                <button 
+                  onClick={handleAddBot}
+                  disabled={saving}
+                  className="px-8 py-4 bg-red-500 text-white rounded-2xl font-black uppercase text-xs hover:bg-red-600 transition-all shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                >
+                  {saving ? 'Syncing...' : 'Sync Bot to Academy'}
+                </button>
+             </div>
+          </div>
+       )}
 
        {showAdd && (
           <div className="p-8 rounded-[3rem] bg-white/5 border border-white/10 space-y-6">
@@ -1289,40 +1374,80 @@ function ViewVideos({ project }: any) {
        {loading ? (
          <div className="flex justify-center py-20"><Activity className="w-10 h-10 text-red-500 animate-pulse" /></div>
        ) : (
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {videos.length > 0 ? videos.map((v) => (
-               <div key={v.id} className="group rounded-[2.5rem] bg-white/5 border border-white/10 overflow-hidden hover:border-red-500/30 transition-all shadow-2xl flex flex-col">
-                  <div className="aspect-video relative bg-black">
-                     <iframe 
-                       src={v.youtubeUrl}
-                       className="w-full h-full border-none"
-                       allowFullScreen
-                     />
-                  </div>
-                  <div className="p-8 flex flex-col flex-1">
-                     <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-xl font-black text-white italic uppercase">{v.title}</h3>
-                        {v.botName && <Bot className="w-4 h-4 text-red-500" />}
-                     </div>
-                     <p className="text-white/40 text-[11px] font-bold italic line-clamp-2 flex-1">{v.description}</p>
-                     <div className="mt-8 flex items-center justify-between">
-                        <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">GitHub Sync Active</span>
-                        <button 
-                          onClick={() => handleDeleteVideo(v.id)}
-                          className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all"
-                        >
-                           <Trash2 className="w-4 h-4" />
-                        </button>
-                     </div>
-                  </div>
-               </div>
-            )) : (
-              <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-white/5 rounded-[3rem]">
-                 <Play className="w-12 h-12 text-white/5" />
-                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">No classes found in repository registry</p>
+         <div className="space-y-12">
+            {videos.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 border-b border-white/5 pb-2 ml-4">Instructional Videos</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {videos.map((v) => (
+                    <div key={v.id} className="group rounded-[2.5rem] bg-white/5 border border-white/10 overflow-hidden hover:border-red-500/30 transition-all shadow-2xl flex flex-col">
+                        <div className="aspect-video relative bg-black">
+                          <iframe 
+                            src={v.youtubeUrl}
+                            className="w-full h-full border-none"
+                            allowFullScreen
+                          />
+                        </div>
+                        <div className="p-8 flex flex-col flex-1">
+                          <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-xl font-black text-white italic uppercase">{v.title}</h3>
+                              {v.botName && <Bot className="w-4 h-4 text-red-500" />}
+                          </div>
+                          <p className="text-white/40 text-[11px] font-bold italic line-clamp-2 flex-1">{v.description}</p>
+                          <div className="mt-8 flex items-center justify-between">
+                              <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">GitHub Sync Active</span>
+                              <button 
+                                onClick={() => handleDeleteVideo(v.id)}
+                                className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                          </div>
+                        </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-         </div>
+
+            {bots.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 border-b border-white/5 pb-2 ml-4">Featured Strategies</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {bots.map((b) => (
+                    <div key={b.id} className="group rounded-[2.5rem] bg-gradient-to-br from-white/[0.03] to-transparent border border-white/10 p-8 hover:border-red-500/30 transition-all shadow-2xl flex flex-col relative overflow-hidden">
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-500/5 blur-3xl rounded-full" />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                                <Bot className="w-6 h-6 text-red-500" />
+                            </div>
+                            <button 
+                              onClick={() => handleDeleteBot(b.id)}
+                              className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <h3 className="text-xl font-black text-white italic uppercase mb-2">{b.title}</h3>
+                        <p className="text-white/40 text-[11px] font-bold italic mb-6 line-clamp-3 flex-1">{b.description}</p>
+                        <div className="flex items-center gap-2">
+                           <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black text-white/40 uppercase tracking-widest">
+                              {b.fileName}
+                           </div>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {videos.length === 0 && bots.length === 0 && (
+              <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-white/5 rounded-[3rem]">
+                 <Play className="w-12 h-12 text-white/5" />
+                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">No academy resources found in repository registry</p>
+              </div>
+            )}
+          </div>
        )}
     </div>
   );
